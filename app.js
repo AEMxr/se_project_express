@@ -1,4 +1,4 @@
-"use strict";
+// "use strict";
 const express = require("express");
 const mongoose = require("mongoose");
 const routes = require("./routes");
@@ -25,9 +25,9 @@ app.use("/", routes);
 mongoose
   .connect(MONGODB_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    console.warn("MongoDB connected");
     app.listen(PORT, () => {
-      console.log(`Server listening on port ${PORT}`);
+      console.warn(`Server listening on port ${PORT}`);
     });
   })
   .catch((err) => {
