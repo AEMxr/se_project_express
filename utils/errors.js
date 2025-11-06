@@ -1,0 +1,46 @@
+const OK = 200;
+const CREATED = 201;
+const NO_CONTENT = 204;
+
+const BAD_REQUEST = 400;
+const UNAUTHORIZED = 401;
+const FORBIDDEN = 403;
+const NOT_FOUND = 404;
+const CONFLICT = 409; // duplicate key, ect.
+const UNPROCESSABLE_ENTITY = 422; // validation semantics
+const TOO_MANY_REQUESTS = 429;
+
+const INTERNAL_SERVER_ERROR = 500;
+const BAD_GATEWAY = 502;
+const SERVICE_UNAVAILABLE = 503;
+const GATEWAY_TIMEOUT = 504;
+
+const SERVER_ERROR_MESSAGE = "An error has occurred on the server.";
+
+// Mongo/Mongoose identifiers
+const MONGO_DUPLICATE_KEY = 11000;
+const MONGOOSE_ERRORS = {
+  CAST: "CastError",
+  VALIDATION: "ValidationError",
+  NOT_FOUND: "DocumentNotFoundError",
+};
+
+module.exports = {
+  OK,
+  CREATED,
+  NO_CONTENT,
+  BAD_REQUEST,
+  UNAUTHORIZED,
+  FORBIDDEN,
+  NOT_FOUND,
+  CONFLICT,
+  UNPROCESSABLE_ENTITY,
+  TOO_MANY_REQUESTS,
+  INTERNAL_SERVER_ERROR,
+  BAD_GATEWAY,
+  SERVICE_UNAVAILABLE,
+  GATEWAY_TIMEOUT,
+  SERVER_ERROR_MESSAGE,
+  MONGO_DUPLICATE_KEY,
+  MONGOOSE_ERRORS,
+};
