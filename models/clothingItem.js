@@ -27,11 +27,11 @@ const clothingItemSchema = new Schema({
   },
   owner: {
     type: Schema.Types.ObjectId,
-    ref: "User",
+    ref: "user",
     required: true,
   },
   likes: {
-    type: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    type: [{ type: Schema.Types.ObjectId, ref: "user" }],
     default: [],
   },
   createdAt: {
@@ -40,4 +40,4 @@ const clothingItemSchema = new Schema({
   },
 });
 
-module.exports = model("ClothingItem", clothingItemSchema);
+module.exports = model("clothingItem", clothingItemSchema);
