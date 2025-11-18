@@ -1,7 +1,7 @@
-// "use strict";
 const express = require("express");
 const mongoose = require("mongoose");
 const routes = require("./routes");
+const { handleAppError, BAD_REQUEST } = require("./utils/errors");
 
 const { PORT = 3001, MONGODB_URI = "mongodb://127.0.0.1:27017/wtwr_db" } =
   process.env;
@@ -21,6 +21,17 @@ app.use((req, res, next) => {
 });
 
 app.use("/", routes);
+
+app.use((err, req, res, next) => {
+  if (err && err.type === "entity.parse.failed") {
+    return res.status(BAD_REQUEST).send({ message: "Invalid data" });
+  }
+  return next(err);
+});
+
+app.use((err, req, res, _next) => {
+  return handleAppError(res, err, { path: req.path, method: req.method });
+});
 
 mongoose
   .connect(MONGODB_URI)

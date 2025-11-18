@@ -21,7 +21,7 @@ module.exports = {
     sourceType: "module",
   },
   rules: {
-    "no-underscore-dangle": ["error", { allow: ["_id", "__v"] }],
+    "no-underscore-dangle": ["error", { allow: ["_id", "__v"] }], //so I need the __V because of the debug system I was using, which was throwing flags and this is what fixed it.
     "no-console": ["error", { allow: ["warn", "error"] }],
   },
 };
