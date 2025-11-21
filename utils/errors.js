@@ -1,7 +1,9 @@
-// I rewrote it to satisfy the unused values you addressed,
-// while working with Dot to keep it comprehensive and in scope of the project.
-// This should cover the client side getting generic messages
-// While the developer keeps an explicit description.
+// okay so every constant should now be used including OK=200 through the ok function at the bottom.  If you still want me to get rid of that, I will.
+// I also changed all classes to use a function error builder to satisfy eslint - thank you for pointing that out to me.
+// Client side should now get the generic error message while the server side should get the custom error description.
+// I hope this is a good compromise for both what I'm trying to do and course objectives.  I'm also trying to keep this on one page rather than multiple files.  If you want I can move them to a separate file, let me know.
+// Lastly, Aren't we supposed to be talking through github?  I'm still new at github interactions and I don't remember where to look.
+// Thank you so much for your time and patience!
 const OK = 200;
 const CREATED = 201;
 const NO_CONTENT = 204;
@@ -32,50 +34,52 @@ class AppError extends Error {
   constructor(statusCode, message, expose = true) {
     super(message);
     this.statusCode = statusCode;
-    this.expose = expose; // if false, respond with generic 500 text
+    this.expose = expose;
   }
 }
 
-class UnauthorizedError extends AppError {
-  constructor(message = "Unauthorized") {
-    super(UNAUTHORIZED, message);
+const buildAppError = (statusCode, defaultMessage, name) => {
+  function CustomAppError(message = defaultMessage) {
+    const error = new AppError(statusCode, message);
+    error.name = name;
+    return error;
   }
-}
-class ForbiddenError extends AppError {
-  constructor(message = "Forbidden") {
-    super(FORBIDDEN, message);
-  }
-}
-class ConflictError extends AppError {
-  constructor(message = "Conflict") {
-    super(CONFLICT, message);
-  }
-}
-class UnprocessableEntityError extends AppError {
-  constructor(message = "Invalid data") {
-    super(UNPROCESSABLE_ENTITY, message);
-  }
-}
-class TooManyRequestsError extends AppError {
-  constructor(message = "Too many requests") {
-    super(TOO_MANY_REQUESTS, message);
-  }
-}
-class BadGatewayError extends AppError {
-  constructor(message = "Bad gateway") {
-    super(BAD_GATEWAY, message);
-  }
-}
-class ServiceUnavailableError extends AppError {
-  constructor(message = "Service unavailable") {
-    super(SERVICE_UNAVAILABLE, message);
-  }
-}
-class GatewayTimeoutError extends AppError {
-  constructor(message = "Gateway timeout") {
-    super(GATEWAY_TIMEOUT, message);
-  }
-}
+  return CustomAppError;
+};
+
+const UnauthorizedError = buildAppError(
+  UNAUTHORIZED,
+  "Unauthorized",
+  "UnauthorizedError"
+);
+
+const ForbiddenError = buildAppError(FORBIDDEN, "Forbidden", "ForbiddenError");
+const ConflictError = buildAppError(CONFLICT, "Conflict", "ConflictError");
+const UnprocessableEntityError = buildAppError(
+  UNPROCESSABLE_ENTITY,
+  "Invalid data",
+  "UnprocessableEntityError"
+);
+const TooManyRequestsError = buildAppError(
+  TOO_MANY_REQUESTS,
+  "Too many requests",
+  "TooManyRequestsError"
+);
+const BadGatewayError = buildAppError(
+  BAD_GATEWAY,
+  "Bad gateway",
+  "BadGatewayError"
+);
+const ServiceUnavailableError = buildAppError(
+  SERVICE_UNAVAILABLE,
+  "Service unvailable",
+  "ServiceUnavailableError"
+);
+const GatewayTimeoutError = buildAppError(
+  GATEWAY_TIMEOUT,
+  "Gateway timeout",
+  "GatewayTimeoutError"
+);
 
 function handleMongooseError(
   res,

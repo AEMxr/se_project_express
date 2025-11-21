@@ -29,8 +29,12 @@ app.use((err, req, res, next) => {
   return next(err);
 });
 
-app.use((err, req, res, _next) => {
-  return handleAppError(res, err, { path: req.path, method: req.method });
+app.use((err, req, res, next) => {
+  handleAppError(res, err, {
+    path: req.path,
+    method: req.method,
+    hasNext: typeof next === "function",
+  });
 });
 
 mongoose
