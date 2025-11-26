@@ -1,6 +1,7 @@
 const ClothingItem = require("../models/clothingItem");
 const {
   BAD_REQUEST,
+  FORBIDDEN,
   handleMongooseError,
   created,
 } = require("../utils/errors");
@@ -82,9 +83,17 @@ module.exports.createItem = (req, res) => {
 module.exports.deleteItem = (req, res) => {
   const { itemId } = req.params;
 
-  ClothingItem.findByIdAndDelete(itemId)
+  ClothingItem.findById(itemId)
     .orFail()
-    .then((deleted) => res.send(deleted))
+    .then((item) => {
+      if (item.owner.toString() !== req.user._id) {
+        return res
+          .status(FORBIDDEN)
+          .send({ message: "Forbidden" });
+      }
+      return item.deleteOne().then(() => res.send(item));
+    })
+    // .then((deleted) => res.send(deleted))
     .catch((err) =>
       handleMongooseError(res, err, { op: "deleteItem", itemId })
     );

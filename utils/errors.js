@@ -1,9 +1,3 @@
-// okay so every constant should now be used including OK=200 through the ok function at the bottom.  If you still want me to get rid of that, I will.
-// I also changed all classes to use a function error builder to satisfy eslint - thank you for pointing that out to me.
-// Client side should now get the generic error message while the server side should get the custom error description.
-// I hope this is a good compromise for both what I'm trying to do and course objectives.  I'm also trying to keep this on one page rather than multiple files.  If you want I can move them to a separate file, let me know.
-// Lastly, Aren't we supposed to be talking through github?  I'm still new at github interactions and I don't remember where to look.
-// Thank you so much for your time and patience!
 const OK = 200;
 const CREATED = 201;
 const NO_CONTENT = 204;

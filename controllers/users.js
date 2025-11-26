@@ -1,26 +1,89 @@
 const User = require("../models/user");
-const { handleMongooseError, created } = require("../utils/errors");
+const {
+  handleMongooseError,
+  created,
+  UNAUTHORIZED,
+  BAD_REQUEST,
+} = require("../utils/errors");
+const { JWT_SECRET } = require("../utils/config");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
-module.exports.getUsers = (req, res) => {
-  User.find({})
-    .then((users) => res.send(users))
-    .catch((err) => handleMongooseError(res, err, { op: "getUsers" }));
-};
+// module.exports.getUsers = (req, res) => {
+//   User.find({})
+//     .then((users) => res.send(users))
+//     .catch((err) => handleMongooseError(res, err, { op: "getUsers" }));
+// };
 
-module.exports.getUser = (req, res) => {
-  const { userId } = req.params;
+// module.exports.getUser = (req, res) => {
+//   const { userId } = req.params;
 
-  User.findById(userId)
+//   User.findById(userId)
+//     .orFail()
+//     .then((user) => res.send(user))
+//     .catch((err) => handleMongooseError(res, err, { op: "getUser", userId }));
+// };
+
+module.exports.getCurrentUser = (req, res) => {
+  User.findById(req.user._id)
     .orFail()
     .then((user) => res.send(user))
-    .catch((err) => handleMongooseError(res, err, { op: "getUser", userId }));
+    .catch((err) =>
+      handleMongooseError(res, err, {
+        op: "getCurrentUser"
+      })
+    );
+};
+
+module.exports.updateCurrentUser = (req, res) => {
+  const { name, avatar } = req.body;
+
+  User.findByIdAndUpdate(
+    req.user._id,
+    { name, avatar },
+    { new: true, runValidators: true }
+  )
+    .orFail()
+    .then((user) => res.send(user))
+    .catch((err) =>
+      handleMongooseError(res, err, {
+        op: "updateCurrentUser",
+        bodyKeys: Object.keys(req.body || {}),
+      })
+    );
+};
+
+module.exports.login = (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(BAD_REQUEST).send({ message: "Invalid data" });
+  }
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      return res.send({ token });
+    })
+
+    .catch((err) => {
+      res.status(UNAUTHORIZED).send({ message: err.message });
+    });
 };
 
 module.exports.createUser = (req, res) => {
-  const { name, avatar } = req.body;
+  const { name, avatar, email, password } = req.body;
 
-  User.create({ name, avatar })
-    .then((user) => created(res, user))
+  bcrypt
+    .hash(password, 10)
+    .then((hash) => User.create({ name, avatar, email, password: hash }))
+    .then((user) => {
+      const userObj = user.toObject();
+      delete userObj.password;
+      return created(res, userObj);
+    })
     .catch((err) =>
       handleMongooseError(res, err, {
         op: "createUser",
@@ -28,3 +91,14 @@ module.exports.createUser = (req, res) => {
       })
     );
 };
+
+
+  // User.create({ name, avatar, email, password })
+  //   .then((user) => created(res, user))
+  //   .catch((err) =>
+  //     handleMongooseError(res, err, {
+  //       op: "createUser",
+  //       bodyKeys: Object.keys(req.body || {}),
+  //     })
+  //   );
+// };
