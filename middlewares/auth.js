@@ -3,9 +3,11 @@ const { JWT_SECRET } = require("../utils/config");
 const { UNAUTHORIZED } = require("../utils/errors");
 
 module.exports = (req, res, next) => {
-  const isSignin = req.method === "POST" && req.path.startsWith("/signin");
-  const isSignup = req.method === "POST" && req.path.startsWith("/signup");
-  const isPublicItems = req.method === "GET" && (req.path === "/items" || req.path === "/items/");
+  const url = req.originalUrl || req.path || "";
+  const isSignin = url.includes("/signin");
+  const isSignup = url.includes("/signup");
+  const isPublicItems =
+    req.method === "GET" && (url === "/items" || url.startsWith("/items?") || url === "/items/");
 
   if (isSignin || isSignup || isPublicItems) {
     return next();
