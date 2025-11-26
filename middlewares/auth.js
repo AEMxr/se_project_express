@@ -3,23 +3,26 @@ const { JWT_SECRET } = require("../utils/config");
 const { UNAUTHORIZED } = require("../utils/errors");
 
 module.exports = (req, res, next) => {
-    if ((req.method === "POST" && (req.path === "/signin" || req.path === "/signup")) ||
-        (req.method === "GET" && req.path === "/items") ) {
-        return next();
-    }
+  const isSignin = req.method === "POST" && req.path.startsWith("/signin");
+  const isSignup = req.method === "POST" && req.path.startsWith("/signup");
+  const isPublicItems = req.method === "GET" && (req.path === "/items" || req.path === "/items/");
 
-    const { authorization } = req.headers;
+  if (isSignin || isSignup || isPublicItems) {
+    return next();
+  }
 
-    if (!authorization || !authorization.startsWith("Bearer ")) {
-        return res.status(UNAUTHORIZED).send({ message: "Authorization required" });
-    }
+  const { authorization } = req.headers;
 
-    const token = authorization.replace("Bearer ", "");
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return res.status(UNAUTHORIZED).send({ message: "Authorization required" });
+  }
 
-    try {
-        req.user = jwt.verify(token, JWT_SECRET);
-        return next();
-    } catch (err) {
-        return res.status(UNAUTHORIZED).send({ message: "Authorization required" });
-    }
+  const token = authorization.replace("Bearer ", "");
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    return next();
+  } catch (err) {
+    return res.status(UNAUTHORIZED).send({ message: "Authorization required" });
+  }
 };
