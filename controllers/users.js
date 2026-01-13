@@ -6,6 +6,8 @@ const {
   created,
   UNAUTHORIZED,
   BAD_REQUEST,
+  INTERNAL_SERVER_ERROR,
+  SERVER_ERROR_MESSAGE,
 } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
 
@@ -70,9 +72,11 @@ module.exports.login = (req, res) => {
     })
 
     .catch((err) => {
-      res.status(UNAUTHORIZED).send({ message: err.message });
+      if (err && err.message === "Invalid email or password") {
+        return res.status(UNAUTHORIZED).send({ message: "Invalid email or password" });
+}
+  return res.status(INTERNAL_SERVER_ERROR).send({ message: SERVER_ERROR_MESSAGE});
     });
-};
 
 module.exports.createUser = (req, res) => {
   const { name, avatar, email, password } = req.body;
@@ -92,14 +96,4 @@ module.exports.createUser = (req, res) => {
       })
     );
 };
-
-
-  // User.create({ name, avatar, email, password })
-  //   .then((user) => created(res, user))
-  //   .catch((err) =>
-  //     handleMongooseError(res, err, {
-  //       op: "createUser",
-  //       bodyKeys: Object.keys(req.body || {}),
-  //     })
-  //   );
-// };
+}

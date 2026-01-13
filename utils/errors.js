@@ -66,7 +66,7 @@ const BadGatewayError = buildAppError(
 );
 const ServiceUnavailableError = buildAppError(
   SERVICE_UNAVAILABLE,
-  "Service unvailable",
+  "Service unavailable",
   "ServiceUnavailableError"
 );
 const GatewayTimeoutError = buildAppError(
