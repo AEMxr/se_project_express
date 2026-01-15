@@ -11,29 +11,13 @@ const {
 } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
 
-
-// module.exports.getUsers = (req, res) => {
-//   User.find({})
-//     .then((users) => res.send(users))
-//     .catch((err) => handleMongooseError(res, err, { op: "getUsers" }));
-// };
-
-// module.exports.getUser = (req, res) => {
-//   const { userId } = req.params;
-
-//   User.findById(userId)
-//     .orFail()
-//     .then((user) => res.send(user))
-//     .catch((err) => handleMongooseError(res, err, { op: "getUser", userId }));
-// };
-
 module.exports.getCurrentUser = (req, res) => {
   User.findById(req.user._id)
     .orFail()
     .then((user) => res.send(user))
     .catch((err) =>
       handleMongooseError(res, err, {
-        op: "getCurrentUser"
+        op: "getCurrentUser",
       })
     );
 };
@@ -65,18 +49,21 @@ module.exports.login = (req, res) => {
 
   return User.findUserByCredentials(email, password)
     .then((user) => {
-      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
-        expiresIn: "7d",
-      });
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: "7d" });
       return res.send({ token });
     })
-
     .catch((err) => {
-      if (err && err.message === "Invalid email or password") {
-        return res.status(UNAUTHORIZED).send({ message: "Invalid email or password" });
-}
-  return res.status(INTERNAL_SERVER_ERROR).send({ message: SERVER_ERROR_MESSAGE});
+      if (err && err.message === "Incorrect email or password") {
+        return res
+          .status(UNAUTHORIZED)
+          .send({ message: "Incorrect email or password" });
+      }
+
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: SERVER_ERROR_MESSAGE });
     });
+};
 
 module.exports.createUser = (req, res) => {
   const { name, avatar, email, password } = req.body;
@@ -85,7 +72,7 @@ module.exports.createUser = (req, res) => {
     return res.status(BAD_REQUEST).send({ message: "Invalid data" });
   }
 
-  bcrypt
+  return bcrypt
     .hash(password, 10)
     .then((hash) => User.create({ name, avatar, email, password: hash }))
     .then((user) => {
@@ -100,4 +87,3 @@ module.exports.createUser = (req, res) => {
       })
     );
 };
-}
