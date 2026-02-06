@@ -33,3 +33,6 @@ Error Handling
 Dev Notes
 
 For testing, a simple req.user stub is added in app.js. Guard it with NODE_ENV for production.
+
+## How it works
+[link]
