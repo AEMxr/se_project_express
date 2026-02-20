@@ -55,8 +55,9 @@ module.exports.login = (req, res) => {
     .catch((err) => {
       if (err && err.message === "Incorrect email or password") {
         return res
-          .status(UNAUTHORIZED)
-          .send({ message: "Incorrect email or password" });
+          handleMongooseError(res, err, {
+        op: "getCurrentUser",
+      });
       }
 
       return res
