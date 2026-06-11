@@ -23,7 +23,7 @@ module.exports.getCurrentUser = (req, res) => {
 };
 
 module.exports.updateCurrentUser = (req, res) => {
-  const { name, avatar } = req.body;
+  const { name, avatar } = req.body || {};
 
   User.findByIdAndUpdate(
     req.user._id,
@@ -41,7 +41,7 @@ module.exports.updateCurrentUser = (req, res) => {
 };
 
 module.exports.login = (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
 
   if (!email || !password) {
     return handleAppError(
@@ -75,7 +75,7 @@ module.exports.login = (req, res) => {
 };
 
 module.exports.createUser = (req, res) => {
-  const { name, avatar, email, password } = req.body;
+  const { name, avatar, email, password } = req.body || {};
 
   if (!email || !password) {
     return handleAppError(
