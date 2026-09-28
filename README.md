@@ -298,7 +298,7 @@ Known future improvements:
 
 ## Project Pitch Video
 
-[link]
+[link](https://drive.google.com/file/d/14jRwIALX3W8jMD5OuxHY-BEF31NrbLtO/view?usp=sharing)
 
 ---
 
