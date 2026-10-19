@@ -1,4 +1,5 @@
 module.exports = {
+  ignorePatterns: ["coverage/"],
   env: {
     es2021: true,
     node: true,
@@ -6,6 +7,17 @@ module.exports = {
 
   extends: ["eslint:recommended", "airbnb-base", "prettier"],
   overrides: [
+    {
+      files: ["tests/**/*.js"],
+      env: { jest: true },
+      rules: {
+        "global-require": "off",
+        "import/no-extraneous-dependencies": [
+          "error",
+          { devDependencies: true },
+        ],
+      },
+    },
     {
       env: {
         node: true,

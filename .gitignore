@@ -16,3 +16,6 @@ node_modules
 
 # Old files
 *.old
+
+# Test reports
+coverage/

@@ -14,35 +14,35 @@ WTWR allows users to manage clothing items and interact with item data through a
 
 This backend supports:
 
-* User registration and login
-* Password hashing with `bcryptjs`
-* JWT-based authentication
-* Protected routes for user-specific actions
-* Public access to clothing items
-* Clothing item creation and deletion
-* Ownership checks before deletion
-* Like and unlike functionality
-* MongoDB/Mongoose schema validation
-* Centralized HTTP status and error handling
-* Development-only diagnostic routes for testing error responses
-* ESLint and Prettier-based code formatting
+- User registration and login
+- Password hashing with `bcryptjs`
+- JWT-based authentication
+- Protected routes for user-specific actions
+- Public access to clothing items
+- Clothing item creation and deletion
+- Ownership checks before deletion
+- Like and unlike functionality
+- MongoDB/Mongoose schema validation
+- Centralized HTTP status and error handling
+- Development-only diagnostic routes for testing error responses
+- ESLint and Prettier-based code formatting
 
 ---
 
 ## Tech Stack
 
-* **Node.js**
-* **Express**
-* **MongoDB**
-* **Mongoose**
-* **JSON Web Tokens**
-* **bcryptjs**
-* **validator**
-* **cors**
-* **ESLint**
-* **Prettier**
-* **Nodemon**
-* **Postman / VS Code Postman extension**
+- **Node.js**
+- **Express**
+- **MongoDB**
+- **Mongoose**
+- **JSON Web Tokens**
+- **bcryptjs**
+- **validator**
+- **cors**
+- **ESLint**
+- **Prettier**
+- **Nodemon**
+- **Postman / VS Code Postman extension**
 
 ---
 
@@ -138,21 +138,21 @@ Authorization: Bearer <token>
 
 The user schema includes:
 
-* `name` — required string, 2 to 30 characters
-* `avatar` — required URL string
-* `email` — required unique email string
-* `password` — required string, hidden from normal query results
+- `name` — required string, 2 to 30 characters
+- `avatar` — required URL string
+- `email` — required unique email string
+- `password` — required string, hidden from normal query results
 
 ### Clothing Item
 
 The clothing item schema includes:
 
-* `name` — required string, 2 to 30 characters
-* `weather` — required string with allowed values: `hot`, `warm`, `cold`
-* `imageUrl` — required URL string
-* `owner` — required user reference
-* `likes` — array of user references
-* `createdAt` — creation date
+- `name` — required string, 2 to 30 characters
+- `weather` — required string with allowed values: `hot`, `warm`, `cold`
+- `imageUrl` — required URL string
+- `owner` — required user reference
+- `likes` — array of user references
+- `createdAt` — creation date
 
 ---
 
@@ -260,10 +260,10 @@ MONGODB_URI=your-production-database-uri
 
 This project was tested with:
 
-* Postman request collections
-* Manual API route testing
-* GitHub Actions validation
-* ESLint
+- Postman request collections
+- Manual API route testing
+- GitHub Actions validation
+- ESLint
 
 The current project does not yet include a full automated integration test suite. A strong future improvement would be adding automated tests for authentication, authorization, ownership checks, and standardized error responses.
 
@@ -273,26 +273,26 @@ The current project does not yet include a full automated integration test suite
 
 Current status:
 
-* Backend API implemented
-* Authentication flow implemented
-* Protected routes implemented
-* Password hashing implemented
-* Password hashes hidden from normal responses
-* Ownership checks implemented
-* Centralized error handling implemented
-* Linting passes locally
-* Old backup files removed from repository tracking
-* README updated for the current auth-based backend structure
+- Backend API implemented
+- Authentication flow implemented
+- Protected routes implemented
+- Password hashing implemented
+- Password hashes hidden from normal responses
+- Ownership checks implemented
+- Centralized error handling implemented
+- Linting passes locally
+- Old backup files removed from repository tracking
+- README updated for the current auth-based backend structure
 
 Known future improvements:
 
-* Add automated integration tests
-* Guard or disable `/test-errors` outside development
-* Move JWT secret handling to environment variables
-* Add deployment documentation
-* Improve production-level logging
-* Add screenshots or request/response examples
-* Connect this backend to the WTWR frontend authentication flow
+- Add automated integration tests
+- Guard or disable `/test-errors` outside development
+- Move JWT secret handling to environment variables
+- Add deployment documentation
+- Improve production-level logging
+- Add screenshots or request/response examples
+- Connect this backend to the WTWR frontend authentication flow
 
 ---
 
@@ -309,3 +309,7 @@ This project helped me understand how authentication changes the structure of a 
 Adding signup and signin routes is only one part of the work. A secure API also needs protected routes, ownership checks, safe password handling, clear error responses, and maintainable developer-side debugging patterns.
 
 The biggest lesson from this project was that backend development is not just about making successful requests work. It is also about designing predictable failure behavior, protecting user data, and making the system easier to debug and maintain.
+
+## Automated testing
+
+See [TESTING.md](TESTING.md) for Jest, SuperTest, disposable MongoDB tests, coverage, and commands.

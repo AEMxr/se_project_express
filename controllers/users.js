@@ -11,6 +11,15 @@ const {
 } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
 
+function hasCredentials(email, password) {
+  return (
+    typeof email === "string" &&
+    typeof password === "string" &&
+    email.length > 0 &&
+    password.length > 0
+  );
+}
+
 module.exports.getCurrentUser = (req, res) => {
   User.findById(req.user._id)
     .orFail()
@@ -43,15 +52,11 @@ module.exports.updateCurrentUser = (req, res) => {
 module.exports.login = (req, res) => {
   const { email, password } = req.body || {};
 
-  if (!email || !password) {
-    return handleAppError(
-      res,
-      new AppError(BAD_REQUEST, "Invalid data"),
-      {
-        op: "login",
-        bodyKeys: Object.keys(req.body || {}),
-      }
-    );
+  if (!hasCredentials(email, password)) {
+    return handleAppError(res, new AppError(BAD_REQUEST, "Invalid data"), {
+      op: "login",
+      bodyKeys: Object.keys(req.body || {}),
+    });
   }
 
   return User.findUserByCredentials(email, password)
@@ -77,15 +82,11 @@ module.exports.login = (req, res) => {
 module.exports.createUser = (req, res) => {
   const { name, avatar, email, password } = req.body || {};
 
-  if (!email || !password) {
-    return handleAppError(
-      res,
-      new AppError(BAD_REQUEST, "Invalid data"),
-      {
-        op: "createUser",
-        bodyKeys: Object.keys(req.body || {}),
-      }
-    );
+  if (!hasCredentials(email, password)) {
+    return handleAppError(res, new AppError(BAD_REQUEST, "Invalid data"), {
+      op: "createUser",
+      bodyKeys: Object.keys(req.body || {}),
+    });
   }
 
   return bcrypt

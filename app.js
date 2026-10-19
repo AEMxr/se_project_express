@@ -29,17 +29,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.warn("MongoDB connected");
-    app.listen(PORT, () => {
-      console.warn(`Server listening on port ${PORT}`);
+if (require.main === module) {
+  mongoose
+    .connect(MONGODB_URI)
+    .then(() => {
+      console.warn("MongoDB connected");
+      app.listen(PORT, () => {
+        console.warn(`Server listening on port ${PORT}`);
+      });
+    })
+    .catch((err) => {
+      console.error("MongoDB connection error:", err.message);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
-  });
+}
 
 module.exports = app;

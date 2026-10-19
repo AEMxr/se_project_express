@@ -7,10 +7,14 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --runInBand",
     "lint": "npx eslint .",
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "test:unit": "jest --runInBand tests/unit",
+    "test:integration": "jest --runInBand tests/integration",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:handles": "jest --runInBand --detectOpenHandles"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -25,7 +29,13 @@
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.10.2",
     "eslint-plugin-import": "^2.32.0",
+    "jest": "^30.5.2",
+    "mongodb-memory-server-core": "^11.3.0",
     "nodemon": "^3.1.10",
-    "prettier": "^2.8.8"
+    "prettier": "^2.8.8",
+    "supertest": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

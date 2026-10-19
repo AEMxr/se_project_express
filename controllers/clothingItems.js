@@ -67,7 +67,7 @@ module.exports.getItems = (req, res) => {
 };
 
 module.exports.createItem = (req, res) => {
-  const { name, weather, imageUrl } = req.body;
+  const { name, weather, imageUrl } = req.body || {};
 
   ClothingItem.create({ name, weather, imageUrl, owner: req.user._id })
     .then((item) => created(res, item))
@@ -87,9 +87,7 @@ module.exports.deleteItem = (req, res) => {
     .orFail()
     .then((item) => {
       if (item.owner.toString() !== req.user._id) {
-        return res
-          .status(FORBIDDEN)
-          .send({ message: "Forbidden" });
+        return res.status(FORBIDDEN).send({ message: "Forbidden" });
       }
       return item.deleteOne().then(() => res.send(item));
     })

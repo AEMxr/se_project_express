@@ -1,0 +1,23 @@
+module.exports = {
+  testEnvironment: "node",
+  testMatch: ["<rootDir>/tests/**/*.test.js"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
+  restoreMocks: true,
+  clearMocks: true,
+  maxWorkers: 1,
+  testTimeout: 30000,
+  coverageProvider: "v8",
+  collectCoverageFrom: [
+    "app.js",
+    "controllers/**/*.js",
+    "models/**/*.js",
+    "middlewares/**/*.js",
+    "routes/**/*.js",
+    "utils/errors.js",
+  ],
+  coverageDirectory: "coverage",
+  coverageReporters: ["text", "html", "json-summary"],
+  coverageThreshold: {
+    global: { statements: 90, branches: 85, functions: 95, lines: 90 },
+  },
+};
