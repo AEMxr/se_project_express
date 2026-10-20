@@ -26,7 +26,12 @@ router.get(
   validateWeatherQuery,
   getCurrentWeather
 );
-router.use("/test-errors", debugErrorsRouter);
+router.use("/test-errors", (req, res, next) => {
+  if (!["development", "test"].includes(process.env.NODE_ENV)) {
+    return next(new NotFoundError("Requested resource not found"));
+  }
+  return debugErrorsRouter(req, res, next);
+});
 router.use(auth);
 router.use("/users", usersRouter);
 router.use("/items", itemsRouter);

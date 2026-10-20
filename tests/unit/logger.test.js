@@ -19,19 +19,17 @@ function capture(entries) {
   });
 }
 
-let logs;
-let requests;
-let failures;
-let request;
+const testState = {};
+
 beforeEach(() => {
-  requests = [];
-  failures = [];
-  logs = createLoggers({
-    requestTransports: [capture(requests)],
-    errorTransports: [capture(failures)],
+  testState.requests = [];
+  testState.failures = [];
+  testState.logs = createLoggers({
+    requestTransports: [capture(testState.requests)],
+    errorTransports: [capture(testState.failures)],
   });
   const app = express();
-  app.use(logs.requestLogger);
+  app.use(testState.logs.requestLogger);
   app.use(express.json());
   app.post("/signin", (req, res) =>
     res.send({ token: "response-secret-token" })
@@ -58,26 +56,26 @@ beforeEach(() => {
   app.get("/stackless", (req, res, next) =>
     next(new AppError(500, "Secret message", true))
   );
-  app.use(logs.errorLogger);
+  app.use(testState.logs.errorLogger);
   app.use(errors());
   app.use(errorHandler);
-  request = supertest(app);
+  testState.request = supertest(app);
 });
 afterEach(() => {
-  logs.requestLog.close();
-  logs.errorLog.close();
+  testState.logs.requestLog.close();
+  testState.logs.errorLog.close();
 });
 
 describe("Request and error logging", () => {
   test("records request method, route, status and timestamp without credentials", async () => {
-    await request
+    await testState.request
       .post("/signin?token=query-secret")
       .set("Authorization", "Bearer header-secret")
       .set("Cookie", "jwt=cookie-secret")
       .send({ email: "private@example.com", password: "body-secret" })
       .expect(200);
-    expect(requests).toHaveLength(1);
-    expect(requests[0]).toMatchObject({
+    expect(testState.requests).toHaveLength(1);
+    expect(testState.requests[0]).toMatchObject({
       level: "info",
       message: "HTTP POST 200",
       meta: {
@@ -87,7 +85,7 @@ describe("Request and error logging", () => {
       },
       timestamp: expect.any(String),
     });
-    const output = JSON.stringify(requests);
+    const output = JSON.stringify(testState.requests);
     [
       "query-secret",
       "header-secret",
@@ -96,83 +94,89 @@ describe("Request and error logging", () => {
       "body-secret",
       "response-secret-token",
     ].forEach((secret) => expect(output).not.toContain(secret));
-    expect(failures).toHaveLength(0);
+    expect(testState.failures).toHaveLength(0);
   });
 
   test("logs validation errors once and never includes the rejected request body", async () => {
-    const result = await request
+    const result = await testState.request
       .post("/validation?token=query-secret")
       .set("Authorization", "Bearer header-secret")
       .send({ email: "invalid-secret-email", password: "pw" })
       .expect(400);
     expect(result.body.validation.body.keys).toEqual(["email", "password"]);
-    expect(failures).toHaveLength(1);
-    expect(failures[0]).toMatchObject({
+    expect(testState.failures).toHaveLength(1);
+    expect(testState.failures[0]).toMatchObject({
       message: "HTTP request failed",
       meta: { errorName: "Error", statusCode: 400, route: "/validation" },
     });
-    const output = JSON.stringify([...requests, ...failures]);
+    const output = JSON.stringify([
+      ...testState.requests,
+      ...testState.failures,
+    ]);
     ["invalid-secret-email", "query-secret", "header-secret", '"pw"'].forEach(
       (secret) => expect(output).not.toContain(secret)
     );
-    expect(requests[0].meta.res.statusCode).toBe(400);
+    expect(testState.requests[0].meta.res.statusCode).toBe(400);
   });
 
   test("records stack locations for server errors without exception values or actual URL parameters", async () => {
-    const result = await request
+    const result = await testState.request
       .get("/failure/private-url-secret?password=query-secret")
       .expect(500);
     expect(result.body).toEqual({
       message: "An error has occurred on the server.",
     });
-    expect(failures).toHaveLength(1);
-    expect(failures[0].meta).toMatchObject({
+    expect(testState.failures).toHaveLength(1);
+    expect(testState.failures[0].meta).toMatchObject({
       errorName: "Error",
       statusCode: 500,
       route: "/failure/:itemId",
       stack: expect.stringContaining("at "),
     });
-    const output = JSON.stringify([...requests, ...failures]);
+    const output = JSON.stringify([
+      ...testState.requests,
+      ...testState.failures,
+    ]);
     [
       "server-secret",
       "error-secret-token",
       "private-url-secret",
       "query-secret",
     ].forEach((secret) => expect(output).not.toContain(secret));
-    expect(requests[0].meta.res.statusCode).toBe(500);
+    expect(testState.requests[0].meta.res.statusCode).toBe(500);
   });
 
   test("malformed JSON is logged before the central parser error response", async () => {
-    await request
+    await testState.request
       .post("/signin")
       .set("Content-Type", "application/json")
       .send('{"password":"malformed-secret"')
       .expect(400);
-    expect(failures).toHaveLength(1);
-    expect(failures[0].meta).toMatchObject({
+    expect(testState.failures).toHaveLength(1);
+    expect(testState.failures[0].meta).toMatchObject({
       statusCode: 400,
       route: "(unmatched)",
     });
-    expect(JSON.stringify([...requests, ...failures])).not.toContain(
-      "malformed-secret"
-    );
+    expect(
+      JSON.stringify([...testState.requests, ...testState.failures])
+    ).not.toContain("malformed-secret");
   });
 
   test("unknown routes use a placeholder instead of logging arbitrary URL values", async () => {
-    await request.get("/path-secret?token=query-secret").expect(404);
-    expect(requests[0].meta.route).toBe("(unmatched)");
-    expect(JSON.stringify(requests)).not.toContain("path-secret");
-    expect(JSON.stringify(requests)).not.toContain("query-secret");
+    await testState.request.get("/path-secret?token=query-secret").expect(404);
+    expect(testState.requests[0].meta.route).toBe("(unmatched)");
+    expect(JSON.stringify(testState.requests)).not.toContain("path-secret");
+    expect(JSON.stringify(testState.requests)).not.toContain("query-secret");
   });
 
   test("errors without a name or stack still reach a safe 500 response", async () => {
-    await request.get("/untyped").expect(500);
-    expect(failures[0].meta).toMatchObject({
+    await testState.request.get("/untyped").expect(500);
+    expect(testState.failures[0].meta).toMatchObject({
       errorName: "Error",
       statusCode: 500,
     });
-    expect(failures[0].meta.stack).toBeUndefined();
-    await request
+    expect(testState.failures[0].meta.stack).toBeUndefined();
+    await testState.request
       .get("/stackless")
       .expect(500, { message: "An error has occurred on the server." });
   });

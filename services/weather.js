@@ -98,6 +98,23 @@ function createWeatherService({
     }
   }
 
+  function startRequest(cacheKey, latitude, longitude, apiKey) {
+    if (pending.size >= maxConcurrentRequests) {
+      throw new ServiceUnavailableError(WEATHER_UNAVAILABLE);
+    }
+    const request = requestWeather(latitude, longitude, apiKey)
+      .then((data) => {
+        if (cache.size >= maxCacheEntries) {
+          cache.delete(cache.keys().next().value);
+        }
+        cache.set(cacheKey, { data, expiresAt: Date.now() + cacheTtlMs });
+        return data;
+      })
+      .finally(() => pending.delete(cacheKey));
+    pending.set(cacheKey, request);
+    return request;
+  }
+
   return async function getWeather(latitude, longitude) {
     const apiKey = getApiKey()?.trim();
     if (!apiKey || apiKey === "your_openweather_key") {
@@ -112,25 +129,9 @@ function createWeatherService({
     }
     cache.delete(cacheKey);
 
-    let request = pending.get(cacheKey);
-    if (!request) {
-      if (pending.size >= maxConcurrentRequests) {
-        throw new ServiceUnavailableError(WEATHER_UNAVAILABLE);
-      }
-      request = requestWeather(lat, lon, apiKey).then((data) => {
-        if (cache.size >= maxCacheEntries) {
-          cache.delete(cache.keys().next().value);
-        }
-        cache.set(cacheKey, { data, expiresAt: Date.now() + cacheTtlMs });
-        return data;
-      });
-      pending.set(cacheKey, request);
-    }
-    try {
-      return structuredClone(await request);
-    } finally {
-      pending.delete(cacheKey);
-    }
+    const request =
+      pending.get(cacheKey) ?? startRequest(cacheKey, lat, lon, apiKey);
+    return structuredClone(await request);
   };
 }
 

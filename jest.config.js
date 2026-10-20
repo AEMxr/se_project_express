@@ -14,6 +14,8 @@ module.exports = {
     "models/**/*.js",
     "middlewares/**/*.js",
     "routes/**/*.js",
+    "utils/setupEnvironment.js",
+    "utils/config.js",
     "utils/errors.js",
     "utils/AppError.js",
     "utils/loadEnvironment.js",

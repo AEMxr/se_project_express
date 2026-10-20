@@ -14,7 +14,10 @@
     "test:unit": "jest --runInBand tests/unit",
     "test:integration": "jest --runInBand tests/integration",
     "test:coverage": "jest --runInBand --coverage",
-    "test:handles": "jest --runInBand --detectOpenHandles"
+    "test:handles": "jest --runInBand --detectOpenHandles",
+    "setup:env": "node scripts/setup-env.js",
+    "format": "prettier --write \"{controllers,middlewares,models,routes,services,utils,scripts,tests}/**/*.js\" app.js jest.config.js .eslintrc.js package.json package-lock.json \"*.md\" .github/workflows/tests.yml",
+    "format:check": "prettier --check \"{controllers,middlewares,models,routes,services,utils,scripts,tests}/**/*.js\" app.js jest.config.js .eslintrc.js package.json package-lock.json \"*.md\" .github/workflows/tests.yml"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

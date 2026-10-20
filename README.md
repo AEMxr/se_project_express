@@ -100,7 +100,7 @@ Client-facing error responses are kept simple and safe, while server-side loggin
 
 The project includes development-only diagnostic routes under `/test-errors`.
 
-These routes are useful for manually checking standardized error responses during development. They are not intended for production use and should be disabled, guarded, or removed before deploying a production application.
+These routes are useful for manually checking standardized error responses. They are enabled only in explicit development/test mode and return 404 otherwise.
 
 ---
 
@@ -202,14 +202,15 @@ The clothing item schema includes:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/AEMxr/se_project_express.git
+git clone --branch automated-tests https://github.com/AEMxr/se_project_express.git
 cd se_project_express
 ```
 
 ### 2. Install dependencies
 
 ```bash
-npm install
+npm ci
+npm run setup:env
 ```
 
 ### 3. Start MongoDB
@@ -244,28 +245,26 @@ npm run lint
 
 ## Available Scripts
 
-| Command         | Description                               |
-| --------------- | ----------------------------------------- |
-| `npm run start` | Starts the server with Node               |
-| `npm run dev`   | Starts the server with Nodemon hot reload |
-| `npm run lint`  | Runs ESLint on the project                |
+| Command                 | Description                                        |
+| ----------------------- | -------------------------------------------------- |
+| `npm run start`         | Starts the server with Node                        |
+| `npm run dev`           | Starts the server with Nodemon hot reload          |
+| `npm run lint`          | Runs ESLint on the project                         |
+| `npm run setup:env`     | Creates private local configuration                |
+| `npm run format:check`  | Checks source and documentation formatting         |
+| `npm run test:coverage` | Runs Jest, SuperTest and disposable MongoDB checks |
 
 ---
 
 ## Environment and Configuration Notes
 
-The project currently uses a local MongoDB database by default.
+Use Node.js 22 or newer. Run `npm run setup:env` after installing dependencies. It creates an ignored `.env.local`, generates a random JWT signing secret, and preserves valid existing secrets and weather settings. The command never prints credentials.
 
-For development, the JWT secret is stored in `utils/config.js`.
+Normal startup loads this configuration before importing authenticated routes. Missing, short or template JWT secrets stop startup with a configuration message. Restarting with the same private secret preserves sessions; replacing the old public development secret requires signing in again.
 
-For a production deployment, the JWT secret should be moved into an environment variable and excluded from source control.
+Set `OPEN_WEATHER_API_KEY` in the backend's `.env.local` for weather. Production hosts must supply private `JWT_SECRET` and `OPEN_WEATHER_API_KEY` values in their server environment. Neither belongs in client configuration or Git. MongoDB defaults to the local database documented above; `MONGODB_URI` and `PORT` remain optional overrides.
 
-Recommended future production pattern:
-
-```bash
-JWT_SECRET=your-secure-secret
-MONGODB_URI=your-production-database-uri
-```
+Diagnostic routes are available only when `NODE_ENV` explicitly equals `development` or `test`; they return 404 in other environments. To enable local diagnostics, set `NODE_ENV=development` in the ignored local file. Jest uses its own public fixture signing secret and never loads that file.
 
 ---
 
@@ -299,11 +298,8 @@ Current status:
 
 Known future improvements:
 
-- Guard or disable `/test-errors` outside development
-- Move JWT secret handling to environment variables
 - Add deployment documentation
 - Add screenshots or request/response examples
-- Connect this backend to the WTWR frontend authentication flow
 
 ---
 
@@ -329,4 +325,4 @@ See [VALIDATION.md](VALIDATION.md) for Celebrate/Joi request schemas, centralize
 
 ## Weather configuration
 
-The `/weather` endpoint is public. Store `OPEN_WEATHER_API_KEY` only in this backend worktree's ignored `.env.local` or the backend host's environment; no weather key belongs in frontend variables. Normal startup loads that local file, while tests skip it. The existing local key was migrated without changing the original backend checkout. See [WEATHER.md](WEATHER.md) for startup, limits, deployment and tests.
+The `/weather` endpoint is public. Store `OPEN_WEATHER_API_KEY` only in this backend's ignored `.env.local` or the backend host's environment; no weather key belongs in frontend variables. Normal startup loads that local file, while tests skip it. The existing local key was migrated without changing the original backend checkout. See [WEATHER.md](WEATHER.md) for startup, limits, deployment and tests.

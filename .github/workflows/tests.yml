@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - automated-tests
   pull_request:
     branches:
       - main
@@ -28,7 +29,9 @@ jobs:
       - name: Install project dependencies
         run: npm ci --loglevel=error --no-fund --no-audit
       - name: Lint the backend
-        run: npm run lint
+        run: |
+          npm run lint
+          npm run format:check
       - name: Run Jest with disposable databases and coverage
         run: npm run test:coverage
         env:
@@ -97,6 +100,10 @@ jobs:
 
       - name: Install wait-port
         run: npm install -g wait-port
+
+      - name: Generate a signing secret for the temporary course server
+        run: |
+          node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'JWT_SECRET=' + require('node:crypto').randomBytes(32).toString('hex') + '\n')"
 
       - name: Run server
         run: npm run start & wait-port -t 30000 localhost:3001

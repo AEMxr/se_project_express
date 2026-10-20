@@ -3,11 +3,13 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const { errors } = require("celebrate");
 const loadEnvironment = require("./utils/loadEnvironment");
+
+// Configuration must be loaded before routes import the signing secret.
+loadEnvironment();
+
 const routes = require("./routes");
 const errorHandler = require("./middlewares/errorHandler");
 const { createLoggers } = require("./middlewares/logger");
-
-loadEnvironment();
 
 const { PORT = 3001, MONGODB_URI = "mongodb://127.0.0.1:27017/wtwr_db" } =
   process.env;

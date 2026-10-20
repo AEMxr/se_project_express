@@ -16,16 +16,20 @@ const signup = {
   email: "new@example.com",
   password: "Password1!",
 };
-let owner;
-let other;
-let item;
+const testState = {};
 
 beforeEach(async () => {
-  owner = await seedUser({ name: "Account A", email: "a@example.com" });
-  other = await seedUser({ name: "Account B", email: "b@example.com" });
-  item = await ClothingItem.create(garment(owner.user._id));
+  testState.owner = await seedUser({
+    name: "Account A",
+    email: "a@example.com",
+  });
+  testState.other = await seedUser({
+    name: "Account B",
+    email: "b@example.com",
+  });
+  testState.item = await ClothingItem.create(garment(testState.owner.user._id));
 });
-const authorize = (call, account = owner) =>
+const authorize = (call, account = testState.owner) =>
   call.set("Authorization", `Bearer ${account.token}`);
 
 describe("Public endpoints and registration", () => {
@@ -35,7 +39,7 @@ describe("Public endpoints and registration", () => {
     expect(result.body).toHaveLength(1);
     expect(result.body[0]).toMatchObject({
       name: "Test Sweater",
-      owner: owner.user._id.toString(),
+      owner: testState.owner.user._id.toString(),
     });
   });
   test("signup hashes passwords and never returns them", async () => {
@@ -90,10 +94,10 @@ describe("Signing in and token authorization", () => {
   test("signin returns a usable signed JWT", async () => {
     const result = await request
       .post("/signin")
-      .send({ email: "a@example.com", password: owner.password })
+      .send({ email: "a@example.com", password: testState.owner.password })
       .expect(200);
     expect(jwt.verify(result.body.token, JWT_SECRET)._id).toBe(
-      owner.user._id.toString()
+      testState.owner.user._id.toString()
     );
     const profile = await request
       .get("/users/me")
@@ -134,7 +138,7 @@ describe("Signing in and token authorization", () => {
         kind === "invalid"
           ? "nonsense"
           : jwt.sign(
-              { _id: owner.user._id },
+              { _id: testState.owner.user._id },
               kind === "wrong-secret" ? "wrong" : JWT_SECRET,
               { expiresIn: kind === "expired" ? -1 : 60 }
             );
@@ -145,7 +149,7 @@ describe("Signing in and token authorization", () => {
     }
   );
   test("a deleted account cannot load its profile", async () => {
-    await User.deleteOne({ _id: owner.user._id });
+    await User.deleteOne({ _id: testState.owner.user._id });
     await authorize(request.get("/users/me")).expect(404);
   });
 });
@@ -159,35 +163,41 @@ describe("Profile updates", () => {
     const result = await authorize(request.patch("/users/me"))
       .send({
         ...values,
-        _id: other.user._id,
+        _id: testState.other.user._id,
         email: "spoofed@example.com",
         password: "spoofed",
       })
       .expect(200);
     expect(result.body).toMatchObject({
       ...values,
-      _id: owner.user._id.toString(),
+      _id: testState.owner.user._id.toString(),
       email: "a@example.com",
     });
     expect(result.body.password).toBeUndefined();
-    expect((await User.findById(owner.user._id)).name).toBe(values.name);
-    expect((await User.findById(other.user._id)).name).toBe("Account B");
+    expect((await User.findById(testState.owner.user._id)).name).toBe(
+      values.name
+    );
+    expect((await User.findById(testState.other.user._id)).name).toBe(
+      "Account B"
+    );
   });
   test.each([{ name: "x" }, { avatar: "bad-url" }])(
     "rejects invalid updates %p without changing saved values",
     async (invalid) => {
       await authorize(request.patch("/users/me")).send(invalid).expect(400);
-      expect((await User.findById(owner.user._id)).name).toBe("Account A");
+      expect((await User.findById(testState.owner.user._id)).name).toBe(
+        "Account A"
+      );
     }
   );
 });
 
 describe("Garment creation and deletion", () => {
   test("creates garments for the authenticated owner and lists the saved record", async () => {
-    const values = garment(other.user._id, {
+    const values = garment(testState.other.user._id, {
       name: "New Coat",
       weather: "cold",
-      likes: [other.user._id],
+      likes: [testState.other.user._id],
     });
     const result = await authorize(request.post("/items"))
       .send(values)
@@ -195,11 +205,11 @@ describe("Garment creation and deletion", () => {
     expect(result.body).toMatchObject({
       name: "New Coat",
       weather: "cold",
-      owner: owner.user._id.toString(),
+      owner: testState.owner.user._id.toString(),
       likes: [],
     });
     const saved = await ClothingItem.findById(result.body._id);
-    expect(saved.owner.toString()).toBe(owner.user._id.toString());
+    expect(saved.owner.toString()).toBe(testState.owner.user._id.toString());
     const listing = await request.get("/items").expect(200);
     expect(listing.body.some((entry) => entry._id === result.body._id)).toBe(
       true
@@ -212,7 +222,7 @@ describe("Garment creation and deletion", () => {
     { imageUrl: "bad-url" },
   ])("rejects invalid garments %p", async (invalid) => {
     await authorize(request.post("/items"))
-      .send(garment(owner.user._id, invalid))
+      .send(garment(testState.owner.user._id, invalid))
       .expect(400);
     expect(await ClothingItem.countDocuments()).toBe(1);
   });
@@ -220,15 +230,18 @@ describe("Garment creation and deletion", () => {
     await authorize(request.post("/items")).send({}).expect(400);
   });
   test("another account cannot delete a garment", async () => {
-    await authorize(request.delete(`/items/${item._id}`), other).expect(403, {
+    await authorize(
+      request.delete(`/items/${testState.item._id}`),
+      testState.other
+    ).expect(403, {
       message: "Forbidden",
     });
-    expect(await ClothingItem.findById(item._id)).not.toBeNull();
+    expect(await ClothingItem.findById(testState.item._id)).not.toBeNull();
   });
   test("the owner can delete it, and a repeated deletion is 404", async () => {
-    await authorize(request.delete(`/items/${item._id}`)).expect(200);
-    expect(await ClothingItem.findById(item._id)).toBeNull();
-    await authorize(request.delete(`/items/${item._id}`)).expect(404);
+    await authorize(request.delete(`/items/${testState.item._id}`)).expect(200);
+    expect(await ClothingItem.findById(testState.item._id)).toBeNull();
+    await authorize(request.delete(`/items/${testState.item._id}`)).expect(404);
   });
   test.each(["delete", "put", "unlike"])(
     "handles malformed and nonexistent IDs for %s",
@@ -247,20 +260,27 @@ describe("Garment creation and deletion", () => {
 
 describe("Likes persist and remain isolated by account", () => {
   test("repeated likes are idempotent and unlike removes only the current user's ID", async () => {
-    const endpoint = `/items/${item._id}/likes`;
+    const endpoint = `/items/${testState.item._id}/likes`;
     await authorize(request.put(endpoint)).expect(200);
     await authorize(request.put(endpoint)).expect(200);
-    await authorize(request.put(endpoint), other).expect(200);
-    let saved = await ClothingItem.findById(item._id);
-    expect(saved.likes.map(String).sort()).toEqual(
-      [owner.user._id.toString(), other.user._id.toString()].sort()
+    await authorize(request.put(endpoint), testState.other).expect(200);
+    const liked = await ClothingItem.findById(testState.item._id);
+    expect(liked.likes.map(String).sort()).toEqual(
+      [
+        testState.owner.user._id.toString(),
+        testState.other.user._id.toString(),
+      ].sort()
     );
     await authorize(request.delete(endpoint)).expect(200);
     await authorize(request.delete(endpoint)).expect(200);
-    saved = await ClothingItem.findById(item._id);
-    expect(saved.likes.map(String)).toEqual([other.user._id.toString()]);
+    const unliked = await ClothingItem.findById(testState.item._id);
+    expect(unliked.likes.map(String)).toEqual([
+      testState.other.user._id.toString(),
+    ]);
     const listing = await request.get("/items").expect(200);
-    expect(listing.body[0].likes).toEqual([other.user._id.toString()]);
+    expect(listing.body[0].likes).toEqual([
+      testState.other.user._id.toString(),
+    ]);
   });
 });
 
@@ -301,7 +321,7 @@ describe("Failure handling and complete lifecycle", () => {
     const created = await request
       .post("/items")
       .set("Authorization", token)
-      .send(garment(owner.user._id))
+      .send(garment(testState.owner.user._id))
       .expect(201);
     await request
       .put(`/items/${created.body._id}/likes`)

@@ -43,12 +43,13 @@ function findLocalBinary() {
 }
 
 function useTestDatabase() {
-  let server;
+  const requestState = {};
+
   const databaseName = `wtwr_test_${randomUUID().replaceAll("-", "")}`;
 
   async function clearTestData() {
-    if (!server || mongoose.connection.readyState !== 1) return;
-    const { port } = server.instanceInfo;
+    if (!requestState.server || mongoose.connection.readyState !== 1) return;
+    const { port } = requestState.server.instanceInfo;
     const connectionPort =
       mongoose.connection.getClient().options.hosts[0].port;
     if (mongoose.connection.name !== databaseName || connectionPort !== port) {
@@ -61,11 +62,13 @@ function useTestDatabase() {
 
   beforeAll(async () => {
     // Deliberately ignore MONGODB_URI; never connect to the developer's database.
-    server = await MongoMemoryServer.create({
+    requestState.server = await MongoMemoryServer.create({
       binary: findLocalBinary(),
       instance: { ip: "127.0.0.1", dbName: databaseName },
     });
-    await mongoose.connect(server.getUri(), { dbName: databaseName });
+    await mongoose.connect(requestState.server.getUri(), {
+      dbName: databaseName,
+    });
     await Promise.all([User.init(), ClothingItem.init()]);
   }, 120000);
 
@@ -75,7 +78,7 @@ function useTestDatabase() {
     try {
       await mongoose.disconnect();
     } finally {
-      if (server) await server.stop();
+      if (requestState.server) await requestState.server.stop();
     }
   }, 30000);
 }

@@ -21,14 +21,15 @@ const response = (body = weather, status = 200) => ({
   status,
   json: jest.fn().mockResolvedValue(body),
 });
-let fetchImpl;
+const testState = {};
+
 beforeEach(() => {
-  fetchImpl = jest.fn().mockResolvedValue(response());
+  testState.fetchImpl = jest.fn().mockResolvedValue(response());
 });
 afterEach(() => jest.useRealTimers());
 const service = (options = {}) =>
   createWeatherService({
-    fetchImpl,
+    fetchImpl: testState.fetchImpl,
     getApiKey: () => apiKey,
     ...options,
   });
@@ -37,7 +38,7 @@ describe("Server-only weather requests", () => {
   test("uses the fixed provider, server key, imperial units, timeout and no redirects", async () => {
     const getWeather = service();
     await expect(getWeather(49.281, -123.121)).resolves.toEqual(expected);
-    const [url, options] = fetchImpl.mock.calls[0];
+    const [url, options] = testState.fetchImpl.mock.calls[0];
     expect(url.origin).toBe("https://api.openweathermap.org");
     expect(url.pathname).toBe("/data/2.5/weather");
     expect(Object.fromEntries(url.searchParams)).toEqual({
@@ -59,7 +60,7 @@ describe("Server-only weather requests", () => {
       await expect(
         service({ getApiKey: () => key })(1, 2)
       ).rejects.toMatchObject({ statusCode: 503 });
-      expect(fetchImpl).not.toHaveBeenCalled();
+      expect(testState.fetchImpl).not.toHaveBeenCalled();
     }
   );
 
@@ -73,7 +74,9 @@ describe("Server-only weather requests", () => {
   ])(
     "rejects malformed provider weather without forwarding its body (%p)",
     async (changes) => {
-      fetchImpl.mockResolvedValue(response({ ...weather, ...changes }));
+      testState.fetchImpl.mockResolvedValue(
+        response({ ...weather, ...changes })
+      );
       await expect(service()(1, 2)).rejects.toMatchObject({
         statusCode: 502,
         message: "Weather is unavailable. Please try again later.",
@@ -82,14 +85,14 @@ describe("Server-only weather requests", () => {
   );
 
   test("normalizes missing optional values and unknown condition strings", async () => {
-    fetchImpl.mockResolvedValue(
+    testState.fetchImpl.mockResolvedValue(
       response({ ...weather, name: null, weather: undefined })
     );
     await expect(service()(1, 2)).resolves.toMatchObject({
       name: "Unknown location",
       weather: [{ main: "Clear" }],
     });
-    fetchImpl.mockResolvedValue(
+    testState.fetchImpl.mockResolvedValue(
       response({
         ...weather,
         name: "x".repeat(101),
@@ -102,7 +105,9 @@ describe("Server-only weather requests", () => {
   });
 
   test("rejects an accidentally reflected key in a whitelisted text field", async () => {
-    fetchImpl.mockResolvedValue(response({ ...weather, name: apiKey }));
+    testState.fetchImpl.mockResolvedValue(
+      response({ ...weather, name: apiKey })
+    );
     await expect(service()(1, 2)).rejects.toMatchObject({ statusCode: 502 });
   });
 
@@ -116,7 +121,7 @@ describe("Server-only weather requests", () => {
     "maps upstream %s to safe %s without reading the upstream error body",
     async (status, expectedStatus) => {
       const upstream = response({ message: apiKey }, status);
-      fetchImpl.mockResolvedValue(upstream);
+      testState.fetchImpl.mockResolvedValue(upstream);
       await expect(service()(1, 2)).rejects.toMatchObject({
         statusCode: expectedStatus,
         message: "Weather is unavailable. Please try again later.",
@@ -126,7 +131,9 @@ describe("Server-only weather requests", () => {
   );
 
   test("drops network exception URLs, causes and credentials", async () => {
-    fetchImpl.mockRejectedValue(new Error(`Provider URL ?appid=${apiKey}`));
+    testState.fetchImpl.mockRejectedValue(
+      new Error(`Provider URL ?appid=${apiKey}`)
+    );
     const error = await service()(1, 2).catch((failure) => failure);
     expect(error.statusCode).toBe(502);
     expect(error.cause).toBeUndefined();
@@ -138,7 +145,7 @@ describe("Server-only weather requests", () => {
     upstream.json.mockRejectedValue(
       new SyntaxError(`Invalid response with ${apiKey}`)
     );
-    fetchImpl.mockResolvedValue(upstream);
+    testState.fetchImpl.mockResolvedValue(upstream);
     await expect(service()(1, 2)).rejects.toMatchObject({
       statusCode: 502,
       message: "Weather is unavailable. Please try again later.",
@@ -147,11 +154,12 @@ describe("Server-only weather requests", () => {
 
   test("aborts a slow upstream request, returns 504 and clears the timeout", async () => {
     jest.useFakeTimers();
-    let signal;
-    fetchImpl.mockImplementation((url, options) => {
-      signal = options.signal;
+    const requestState = {};
+
+    testState.fetchImpl.mockImplementation((url, options) => {
+      requestState.signal = options.signal;
       return new Promise((resolve, reject) => {
-        signal.addEventListener(
+        requestState.signal.addEventListener(
           "abort",
           () => reject(new DOMException("Aborted", "AbortError")),
           { once: true }
@@ -163,7 +171,7 @@ describe("Server-only weather requests", () => {
     ).rejects.toMatchObject({ statusCode: 504 });
     await jest.advanceTimersByTimeAsync(100);
     await pending;
-    expect(signal.aborted).toBe(true);
+    expect(requestState.signal.aborted).toBe(true);
     expect(jest.getTimerCount()).toBe(0);
   });
 });
@@ -175,24 +183,25 @@ describe("Bounded caching and concurrent requests", () => {
     const first = await getWeather(1, 2);
     first.main.temp = -999;
     expect(await getWeather(1, 2)).toEqual(expected);
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(1);
     now.mockReturnValue(1100);
     expect(await getWeather(1, 2)).toEqual(expected);
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   test("coalesces simultaneous requests for the same nearby location", async () => {
-    let release;
-    fetchImpl.mockReturnValue(
+    const requestState = {};
+
+    testState.fetchImpl.mockReturnValue(
       new Promise((resolve) => {
-        release = resolve;
+        requestState.release = resolve;
       })
     );
     const getWeather = service();
     const first = getWeather(49.281, -123.121);
     const second = getWeather(49.284, -123.124);
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    release(response());
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(1);
+    requestState.release(response());
     const results = await Promise.all([first, second]);
     expect(results).toEqual([expected, expected]);
     expect(results[0]).not.toBe(results[1]);
@@ -204,39 +213,43 @@ describe("Bounded caching and concurrent requests", () => {
     await getWeather(3, 4);
     await getWeather(5, 6);
     await getWeather(1, 2);
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(4);
   });
 
   test("does not reuse cached weather under another server key", async () => {
-    let key = apiKey;
-    const getWeather = service({ getApiKey: () => key });
+    const requestState = {};
+    requestState.key = apiKey;
+    const getWeather = service({ getApiKey: () => requestState.key });
     await getWeather(1, 2);
-    key = "replacement-test-key";
+    requestState.key = "replacement-test-key";
     await getWeather(1, 2);
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(fetchImpl.mock.calls[1][0].searchParams.get("appid")).toBe(key);
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(2);
+    expect(testState.fetchImpl.mock.calls[1][0].searchParams.get("appid")).toBe(
+      requestState.key
+    );
   });
 
   test("failed requests are not cached and can be retried", async () => {
-    fetchImpl.mockRejectedValueOnce(new Error("Offline"));
+    testState.fetchImpl.mockRejectedValueOnce(new Error("Offline"));
     const getWeather = service();
     await expect(getWeather(1, 2)).rejects.toMatchObject({ statusCode: 502 });
     await expect(getWeather(1, 2)).resolves.toEqual(expected);
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(2);
   });
 
   test("bounds concurrent upstream work and frees capacity after completion", async () => {
-    let release;
-    fetchImpl.mockReturnValueOnce(
+    const requestState = {};
+
+    testState.fetchImpl.mockReturnValueOnce(
       new Promise((resolve) => {
-        release = resolve;
+        requestState.release = resolve;
       })
     );
     const getWeather = service({ maxConcurrentRequests: 1 });
     const first = getWeather(1, 2);
     await expect(getWeather(3, 4)).rejects.toMatchObject({ statusCode: 503 });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    release(response());
+    expect(testState.fetchImpl).toHaveBeenCalledTimes(1);
+    requestState.release(response());
     await first;
     await expect(getWeather(3, 4)).resolves.toEqual(expected);
   });

@@ -19,47 +19,43 @@ const signup = {
   email: "test@example.com",
   password: "Password1!",
 };
-let hash;
-let createUser;
-let findUser;
-let createItem;
-let updateUser;
-let updateItem;
-let findItem;
+const testState = {};
 
 beforeEach(() => {
   // Any controller work for an invalid request is a failure, without touching a DB.
   const unexpected = () => {
     throw new Error("Validation allowed a controller operation");
   };
-  hash = jest.spyOn(bcrypt, "hash").mockImplementation(unexpected);
-  createUser = jest.spyOn(User, "create").mockImplementation(unexpected);
-  findUser = jest
+  testState.hash = jest.spyOn(bcrypt, "hash").mockImplementation(unexpected);
+  testState.createUser = jest
+    .spyOn(User, "create")
+    .mockImplementation(unexpected);
+  testState.findUser = jest
     .spyOn(User, "findUserByCredentials")
     .mockImplementation(unexpected);
-  createItem = jest
+  testState.createItem = jest
     .spyOn(ClothingItem, "create")
     .mockImplementation(unexpected);
-  updateUser = jest
+  testState.updateUser = jest
     .spyOn(User, "findByIdAndUpdate")
     .mockImplementation(unexpected);
-  updateItem = jest
+  testState.updateItem = jest
     .spyOn(ClothingItem, "findByIdAndUpdate")
     .mockImplementation(unexpected);
-  findItem = jest
+  testState.findItem = jest
     .spyOn(ClothingItem, "findById")
     .mockImplementation(unexpected);
 });
 
 afterEach(() => {
   [
-    hash,
-    createUser,
-    findUser,
-    createItem,
-    updateUser,
-    updateItem,
-    findItem,
+    testState.hash,
+    testState.createUser,
+    testState.findUser,
+    testState.createItem,
+    testState.updateUser,
+    testState.updateItem,
+    testState.findItem,
   ].forEach((operation) => expect(operation).not.toHaveBeenCalled());
 });
 

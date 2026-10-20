@@ -71,7 +71,7 @@ Compatible dependency audit fixes are also captured in this worktree's lockfile.
 
 ## GitHub Actions
 
-The workflow runs on pushes to main, pull requests targeting main, and manual dispatch. Both testing jobs use Node 22, matching the project's minimum supported version.
+The workflow runs on pushes to main/automated-tests, pull requests targeting main, and manual dispatch. Both testing jobs use Node 22, matching the project's minimum supported version.
 
 - The automated job installs the project's lockfile, runs ESLint and runs Jest with coverage. Its MongoDB instances are disposable and need no normal database service or real credentials.
 - The course job downloads the public Project 12 or 13 harness into `.course-tests`. Its scripts still run one directory below the app root, without overwriting or nesting into our existing `tests` folder.
@@ -81,16 +81,18 @@ The downloaded harness is ignored by Git and ESLint. Our Jest patterns continue 
 
 The original backend checkout's local `.env.local` has been prepared without changing its tracked files. A local Git exclusion protects that file before the new `.gitignore` reaches main. This is local configuration, not part of the merge or any push.
 
-Local verification passes all 234 backend tests on Node 22.23.3, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
+Local verification passes all 252 backend tests, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
 
 GitHub's full course job still needs to run after these changes are pushed; local Jest and workflow checks do not substitute for the remote grader.
 
 ## Results and limits
 
-On October 19, 2026: **234 tests across 10 suites pass**, with **98.59% line coverage**, **98.93% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
+On October 19, 2026: **252 tests across 13 suites pass**, with **98.66% line coverage**, **99.01% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
 
 The `--detectOpenHandles` run also passes and exits normally. Open `coverage/index.html` after a coverage run for uncovered paths, including direct production startup. Coverage files are ignored by Git and lint.
 
 The tests do not use the normal database, a deployed API, real weather services, or production credentials. They do not prove browser layout, deployment availability, or every possible concurrency scenario.
 
 Production dependency audits currently report zero vulnerabilities. Development-only advisories remain in tooling dependencies, including Jest's transitive `sprintf-js` chain and nodemon's file-watching dependencies; review `npm audit` when updating tooling.
+
+The private-configuration suites verify missing/short/template signing secrets, idempotent setup with preserved weather settings, and diagnostics hidden outside development/test. Shared test values use constant fixture containers; database cleanup still verifies the owned disposable server and generated database name.
