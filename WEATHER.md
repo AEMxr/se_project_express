@@ -1,19 +1,19 @@
 # Weather credentials stay on the server
 
-This implementation lives in the `se_project_express-tests` worktree on branch `automated-tests`. The original backend checkout and optional iPhone worktree are unchanged.
+This implementation was developed in `se_project_express-tests` on `automated-tests` and integrated into `se_project_express` on `main`. Use `main` in both repositories. The optional iPhone worktree remains separate and unchanged.
 
 The browser requests `GET /weather?lat=...&lon=...` from Express. Express adds its private OpenWeather key when requesting the fixed HTTPS provider endpoint, then returns only the city, temperature, condition and sunrise/sunset timestamps needed by the existing UI. The browser does not send or receive an OpenWeather key.
 
 ## Local setup
 
-The existing local key was moved into the backend worktree's ignored `.env.local` as `OPEN_WEATHER_API_KEY`. No key needs to be copied into the frontend. The old frontend environment variable was removed, and the local source snapshot was redacted.
+The existing local key is stored in the backend's ignored `.env.local` as `OPEN_WEATHER_API_KEY` and was preserved when integrating the tested backend into `main`. No key needs to be copied into the frontend. The old frontend environment variable was removed, and the local source snapshot was redacted.
 
-If the old backend is running on port 3001, stop it with Ctrl+C in its terminal before starting this worktree. Do not start two backend servers on that port.
+If a backend is already running on port 3001, stop it with Ctrl+C in its terminal before installing dependencies or starting the merged backend. Do not start two backend servers on that port.
 
 In the backend terminal:
 
 ```bash
-cd ~/Documents/TripleTen/se_project_express-tests
+cd ~/Documents/TripleTen/se_project_express
 npm ci
 npm run setup:env
 npm run dev

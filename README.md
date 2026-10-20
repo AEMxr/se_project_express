@@ -202,7 +202,7 @@ The clothing item schema includes:
 ### 1. Clone the repository
 
 ```bash
-git clone --branch automated-tests https://github.com/AEMxr/se_project_express.git
+git clone --branch main https://github.com/AEMxr/se_project_express.git
 cd se_project_express
 ```
 
@@ -277,7 +277,7 @@ This project was tested with:
 - GitHub Actions validation
 - ESLint
 
-The automated test branch includes Jest, SuperTest and disposable MongoDB suites for authentication, authorization, ownership, validation, logging and standardized error responses. See [TESTING.md](TESTING.md).
+The backend includes Jest, SuperTest and disposable MongoDB suites for authentication, authorization, ownership, validation, logging and standardized error responses. See [TESTING.md](TESTING.md).
 
 ---
 
@@ -325,4 +325,4 @@ See [VALIDATION.md](VALIDATION.md) for Celebrate/Joi request schemas, centralize
 
 ## Weather configuration
 
-The `/weather` endpoint is public. Store `OPEN_WEATHER_API_KEY` only in this backend's ignored `.env.local` or the backend host's environment; no weather key belongs in frontend variables. Normal startup loads that local file, while tests skip it. The existing local key was migrated without changing the original backend checkout. See [WEATHER.md](WEATHER.md) for startup, limits, deployment and tests.
+The `/weather` endpoint is public. Store `OPEN_WEATHER_API_KEY` only in this backend's ignored `.env.local` or the backend host's environment; no weather key belongs in frontend variables. Normal startup loads that local file, while tests skip it. The existing local key was preserved when integrating the tested backend into `main`. See [WEATHER.md](WEATHER.md) for startup, limits, deployment and tests.

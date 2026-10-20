@@ -1,13 +1,13 @@
 # Backend test suites
 
-All changes are isolated in the `se_project_express-tests` worktree on branch `automated-tests`. The original `se_project_express` tracked files and optional iPhone backend are unchanged. Its ignored local weather configuration is prepared separately for the eventual merge.
+The changes developed in `se_project_express-tests` on `automated-tests` have been integrated into `main` in `se_project_express`. The optional iPhone backend remains separate and unchanged.
 
 ## Run in Git Bash
 
-Use Node.js 22 or newer. Open a terminal in this backend worktree:
+Use Node.js 22 or newer. Open a terminal in the main backend checkout:
 
 ```bash
-cd ~/Documents/TripleTen/se_project_express-tests
+cd ~/Documents/TripleTen/se_project_express
 npm ci
 npm test
 ```
@@ -79,15 +79,15 @@ The workflow runs on pushes to main/automated-tests, pull requests targeting mai
 
 The downloaded harness is ignored by Git and ESLint. Our Jest patterns continue to include only our own `tests/**/*.test.js` files.
 
-The original backend checkout's local `.env.local` has been prepared without changing its tracked files. A local Git exclusion protects that file before the new `.gitignore` reaches main. This is local configuration, not part of the merge or any push.
+The main backend checkout keeps private signing and weather configuration in its ignored `.env.local`. The merge preserved the existing weather key, and the idempotent setup command configured a private signing secret. This local configuration is excluded from commits and pushes.
 
 Local verification passes all 252 backend tests, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
 
-GitHub's full course job still needs to run after these changes are pushed; local Jest and workflow checks do not substitute for the remote grader.
+GitHub's full course job must pass for each pushed revision; local Jest and workflow checks do not substitute for the remote grader.
 
 ## Results and limits
 
-On October 19, 2026: **252 tests across 13 suites pass**, with **98.66% line coverage**, **99.01% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
+Reverified on October 20, 2026 before integration into `main`: **252 tests across 13 suites pass**, with **98.66% line coverage**, **99.01% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
 
 The `--detectOpenHandles` run also passes and exits normally. Open `coverage/index.html` after a coverage run for uncovered paths, including direct production startup. Coverage files are ignored by Git and lint.
 

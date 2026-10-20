@@ -1,6 +1,6 @@
 # Request validation, errors and logging
 
-These changes live in the `se_project_express-tests` worktree on branch `automated-tests`. They are not merged into the original backend or the optional iPhone worktree.
+These changes were developed in `se_project_express-tests` on `automated-tests` and integrated into `se_project_express` on `main`. The optional iPhone worktree remains separate and unchanged.
 
 ## Request boundaries
 
