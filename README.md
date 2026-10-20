@@ -42,6 +42,7 @@ This backend supports:
 - **Winston / express-winston**
 - **validator**
 - **cors**
+- **Helmet**
 - **ESLint**
 - **Prettier**
 - **Nodemon**
@@ -71,7 +72,7 @@ The authorization middleware:
 4. Attaches the decoded payload to `req.user`
 5. Allows the request to continue
 
-Public routes remain available without authentication.
+Public routes remain available without authentication. Signin permits 20 failed validated requests per IP per 15 minutes; successful signins do not consume that failure quota. Signup has a separate limit of 20 validated requests per IP per hour. Exceeding either quota returns a structured 429 response with Retry-After.
 
 ### Clothing Item Ownership
 
@@ -263,6 +264,10 @@ Use Node.js 22 or newer. Run `npm run setup:env` after installing dependencies. 
 Normal startup loads this configuration before importing authenticated routes. Missing, short or template JWT secrets stop startup with a configuration message. Restarting with the same private secret preserves sessions; replacing the old public development secret requires signing in again.
 
 Set `OPEN_WEATHER_API_KEY` in the backend's `.env.local` for weather. Production hosts must supply private `JWT_SECRET` and `OPEN_WEATHER_API_KEY` values in their server environment. Neither belongs in client configuration or Git. MongoDB defaults to the local database documented above; `MONGODB_URI` and `PORT` remain optional overrides.
+
+Browser origins default to `http://localhost:3000`, `http://127.0.0.1:3000` and `https://aemxr.github.io`. Set optional `CLIENT_ORIGINS` to a comma-separated list of HTTP(S) origins to replace those defaults for another frontend. Invalid configuration stops startup, and unapproved origins receive 403. HTTP clients without an Origin header can still call public endpoints; CORS does not replace JWT authentication.
+
+Helmet adds response security headers. Production enables HSTS; local HTTP does not. JSON bodies are explicitly limited to 100 KiB. Authentication quotas and the existing weather quota use per-process memory stores; multiple instances need a shared store. Configure reverse-proxy trust only for the hosting topology before relying on client-IP quotas behind a proxy.
 
 Diagnostic routes are available only when `NODE_ENV` explicitly equals `development` or `test`; they return 404 in other environments. To enable local diagnostics, set `NODE_ENV=development` in the ignored local file. Jest uses its own public fixture signing secret and never loads that file.
 

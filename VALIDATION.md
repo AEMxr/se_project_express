@@ -22,17 +22,24 @@ Mongoose schema validation, unique indexes and update validators remain in place
 
 `GET /weather` also validates numeric latitude (−90 to 90) and longitude (−180 to 180) before calling the fixed upstream provider. Unknown query parameters, including caller-supplied keys/URLs/units, are rejected. Weather requests have an independent per-client rate limit. See [WEATHER.md](WEATHER.md).
 
+## HTTP security boundaries
+
+Known protected routes authenticate before body/ID validation; unknown routes reach the final 404 without demanding a token. Signin and signup validate input before their independent IP limits and controller work. Signin allows 20 failures per 15 minutes and does not retain successful requests in its count; signup allows 20 validated attempts per hour. Limits return 429 with Retry-After and use per-process memory stores.
+
+CORS uses exact approved frontend origins: localhost/loopback port 3000 and the existing Pages origin by default. Optional `CLIENT_ORIGINS` replaces that list. Unapproved Origin headers receive 403; requests without Origin still require authentication for private routes. CORS is not authentication. Helmet supplies security headers, with HSTS and insecure-request upgrades restricted to production. JSON parsing explicitly rejects bodies larger than 100 KiB.
+
 ## Centralized failures
 
 Controllers return their promise chains and finish with `.catch(next)`. Known errors extend `AppError`; incorrect credentials use `UnauthorizedError`, and ownership failures use `ForbiddenError`.
 
 The middleware order is:
 
-1. Request logger.
-2. CORS, JSON parsing, routes with authentication/validation/controllers.
-3. Error logger.
-4. Celebrate's `errors()` middleware.
-5. The four-argument centralized error handler.
+1. Security headers.
+2. Request logger.
+3. CORS, bounded JSON parsing, routes with authentication/validation/controllers.
+4. Error logger.
+5. Celebrate's `errors()` middleware.
+6. The four-argument centralized error handler.
 
 Celebrate returns 400 with validation details. Other failures use the shared mapper: database validation/casting → 400, missing document → 404, duplicate email → 409, known application status → its public response, unexpected failures → 500 with a generic message. A 500 never sends its exception message or stack to the client. If headers were already sent, the central handler delegates to Express instead of responding again.
 

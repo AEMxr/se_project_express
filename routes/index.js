@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const { NotFoundError } = require("../utils/errors");
-const auth = require("../middlewares/auth");
+const { createAuthLimiter } = require("../middlewares/authLimiter");
 const {
   validateSignup,
   validateSignin,
@@ -14,11 +14,23 @@ const debugErrorsRouter = require("./debugErrors");
 const { login, createUser } = require("../controllers/users");
 const { getItems } = require("../controllers/clothingItems");
 
+const SIGNUP_WINDOW_MS = 60 * 60 * 1000;
+
 router.get("/", (req, res) => {
   res.send({ status: "ok" });
 });
-router.post("/signin", validateSignin, login);
-router.post("/signup", validateSignup, createUser);
+router.post(
+  "/signin",
+  validateSignin,
+  createAuthLimiter({ skipSuccessfulRequests: true }),
+  login
+);
+router.post(
+  "/signup",
+  validateSignup,
+  createAuthLimiter({ windowMs: SIGNUP_WINDOW_MS }),
+  createUser
+);
 router.get("/items", getItems);
 router.get(
   "/weather",
@@ -32,7 +44,6 @@ router.use("/test-errors", (req, res, next) => {
   }
   return debugErrorsRouter(req, res, next);
 });
-router.use(auth);
 router.use("/users", usersRouter);
 router.use("/items", itemsRouter);
 router.use((req, res, next) => {

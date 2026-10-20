@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
 const { errors } = require("celebrate");
+const { createCors, createSecurityHeaders } = require("./middlewares/security");
 const loadEnvironment = require("./utils/loadEnvironment");
 
 // Configuration must be loaded before routes import the signing secret.
@@ -16,9 +16,10 @@ const { PORT = 3001, MONGODB_URI = "mongodb://127.0.0.1:27017/wtwr_db" } =
 const { requestLogger, errorLogger } = createLoggers();
 const app = express();
 
+app.use(createSecurityHeaders());
 app.use(requestLogger);
-app.use(cors());
-app.use(express.json());
+app.use(createCors());
+app.use(express.json({ limit: "100kb" }));
 app.use("/", routes);
 app.use(errorLogger);
 app.use(errors());

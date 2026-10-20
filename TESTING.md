@@ -81,18 +81,20 @@ The downloaded harness is ignored by Git and ESLint. Our Jest patterns continue 
 
 The main backend checkout keeps private signing and weather configuration in its ignored `.env.local`. The merge preserved the existing weather key, and the idempotent setup command configured a private signing secret. This local configuration is excluded from commits and pushes.
 
-Local verification passes all 252 backend tests, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
+Local verification passes all 286 backend tests, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
 
 GitHub's full course job must pass for each pushed revision; local Jest and workflow checks do not substitute for the remote grader.
 
 ## Results and limits
 
-Reverified on October 20, 2026 before integration into `main`: **252 tests across 13 suites pass**, with **98.66% line coverage**, **99.01% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
+Reverified on October 20, 2026 before integration into `main`: **286 tests across 14 suites pass**, with **98.78% line coverage**, **99.12% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
 
 The `--detectOpenHandles` run also passes and exits normally. Open `coverage/index.html` after a coverage run for uncovered paths, including direct production startup. Coverage files are ignored by Git and lint.
 
 The tests do not use the normal database, a deployed API, real weather services, or production credentials. They do not prove browser layout, deployment availability, or every possible concurrency scenario.
 
 Production dependency audits currently report zero vulnerabilities. Development-only advisories remain in tooling dependencies, including Jest's transitive `sprintf-js` chain and nodemon's file-watching dependencies; review `npm audit` when updating tooling.
+
+The security suite checks route-level authentication and anonymous 404s, allowed/rejected browser origins, preflight headers, production/local security headers, oversized JSON and per-IP authentication limits before credential/hash work. Successful signins release their failure quota; signup has a separate hourly quota. `.prettierrc.json` preserves checkout line endings so native Windows and Linux formatting checks agree.
 
 The private-configuration suites verify missing/short/template signing secrets, idempotent setup with preserved weather settings, and diagnostics hidden outside development/test. Shared test values use constant fixture containers; database cleanup still verifies the owned disposable server and generated database name.
