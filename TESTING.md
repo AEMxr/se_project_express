@@ -33,6 +33,8 @@ There is no need to start the normal Express server or MongoDB service first. Su
 | `tests/unit/errors.test.js`        | Error classes, public/private messages, database error mapping, upstream failures, and response helpers                                                                                                                    |
 | `tests/integration/models.test.js` | Real model validation, length boundaries, unique email index, hidden passwords, bcrypt credential checks, timestamps, and persisted likes                                                                                  |
 | `tests/integration/api.test.js`    | Real HTTP routes, account creation/login, protected operations, profile updates, garment ownership/deletion, likes, malformed data, concurrent duplicate signup, structured errors, and complete account/garment lifecycle |
+| `tests/unit/validation.test.js`    | Request boundary checks, invalid input blocked before bcrypt/database work, field whitelists and password preservation                                                                                                     |
+| `tests/unit/logger.test.js`        | Real middleware log output, credential exclusion, safe stack metadata, error forwarding and file transport configuration                                                                                                   |
 
 The API suite uses SuperTest with the real app, middleware, routes, controllers, models, bcrypt, and JWT. Most database operations are real; one deliberate database-failure case mocks a query to verify a safe 500 response.
 
@@ -61,11 +63,13 @@ Substitute the actual installed path. The helper reads that executable's version
 
 The regression tests exposed two input-handling defects. Requests to create a garment without a body and signup/signin requests with non-string passwords used to return 500. The test branch now reports those as 400 client errors. Normal account and garment behavior is preserved.
 
+Request bodies and item IDs are now validated with Celebrate/Joi before controller work, and all controller failures flow through centralized middleware. Logging tests use memory streams; default Jest loggers do not create files. See [VALIDATION.md](VALIDATION.md) for schemas, middleware order, log contents and dependency compatibility.
+
 Compatible dependency audit fixes are also captured in this worktree's lockfile. No forced major downgrades were applied.
 
 ## Results and limits
 
-On October 18, 2026: **123 tests across 5 suites pass**, with **95.40% line coverage**, **91.05% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
+On October 19, 2026: **187 tests across 7 suites pass**, with **98.17% line coverage**, **99.18% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
 
 The `--detectOpenHandles` run also passes and exits normally. Open `coverage/index.html` after a coverage run for uncovered paths, including direct production startup. Coverage files are ignored by Git and lint.
 

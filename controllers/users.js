@@ -1,64 +1,29 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
-const {
-  handleMongooseError,
-  handleAppError,
-  created,
-  BAD_REQUEST,
-  AppError,
-  UnauthorizedError,
-} = require("../utils/errors");
+const { created } = require("../utils/errors");
 const { JWT_SECRET } = require("../utils/config");
 
-function hasCredentials(email, password) {
-  return (
-    typeof email === "string" &&
-    typeof password === "string" &&
-    email.length > 0 &&
-    password.length > 0
-  );
-}
-
-module.exports.getCurrentUser = (req, res) => {
+module.exports.getCurrentUser = (req, res, next) =>
   User.findById(req.user._id)
     .orFail()
     .then((user) => res.send(user))
-    .catch((err) =>
-      handleMongooseError(res, err, {
-        op: "getCurrentUser",
-      })
-    );
-};
+    .catch(next);
 
-module.exports.updateCurrentUser = (req, res) => {
-  const { name, avatar } = req.body || {};
-
-  User.findByIdAndUpdate(
+module.exports.updateCurrentUser = (req, res, next) => {
+  const { name, avatar } = req.body;
+  return User.findByIdAndUpdate(
     req.user._id,
     { name, avatar },
     { new: true, runValidators: true }
   )
     .orFail()
     .then((user) => res.send(user))
-    .catch((err) =>
-      handleMongooseError(res, err, {
-        op: "updateCurrentUser",
-        bodyKeys: Object.keys(req.body || {}),
-      })
-    );
+    .catch(next);
 };
 
-module.exports.login = (req, res) => {
-  const { email, password } = req.body || {};
-
-  if (!hasCredentials(email, password)) {
-    return handleAppError(res, new AppError(BAD_REQUEST, "Invalid data"), {
-      op: "login",
-      bodyKeys: Object.keys(req.body || {}),
-    });
-  }
-
+module.exports.login = (req, res, next) => {
+  const { email, password } = req.body;
   return User.findUserByCredentials(email, password)
     .then((user) => {
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
@@ -66,29 +31,11 @@ module.exports.login = (req, res) => {
       });
       return res.send({ token });
     })
-    .catch((err) => {
-      if (err && err.message === "Incorrect email or password") {
-        return handleAppError(
-          res,
-          new UnauthorizedError("Incorrect email or password"),
-          { op: "login" }
-        );
-      }
-
-      return handleAppError(res, err, { op: "login" });
-    });
+    .catch(next);
 };
 
-module.exports.createUser = (req, res) => {
-  const { name, avatar, email, password } = req.body || {};
-
-  if (!hasCredentials(email, password)) {
-    return handleAppError(res, new AppError(BAD_REQUEST, "Invalid data"), {
-      op: "createUser",
-      bodyKeys: Object.keys(req.body || {}),
-    });
-  }
-
+module.exports.createUser = (req, res, next) => {
+  const { name, avatar, email, password } = req.body;
   return bcrypt
     .hash(password, 10)
     .then((hash) => User.create({ name, avatar, email, password: hash }))
@@ -97,10 +44,5 @@ module.exports.createUser = (req, res) => {
       delete userObj.password;
       return created(res, userObj);
     })
-    .catch((err) =>
-      handleMongooseError(res, err, {
-        op: "createUser",
-        bodyKeys: Object.keys(req.body || {}),
-      })
-    );
+    .catch(next);
 };

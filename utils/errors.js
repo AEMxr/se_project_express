@@ -1,7 +1,8 @@
+const AppError = require("./AppError");
+
 const OK = 200;
 const CREATED = 201;
 const NO_CONTENT = 204;
-
 const BAD_REQUEST = 400;
 const UNAUTHORIZED = 401;
 const FORBIDDEN = 403;
@@ -9,14 +10,11 @@ const NOT_FOUND = 404;
 const CONFLICT = 409;
 const UNPROCESSABLE_ENTITY = 422;
 const TOO_MANY_REQUESTS = 429;
-
 const INTERNAL_SERVER_ERROR = 500;
 const BAD_GATEWAY = 502;
 const SERVICE_UNAVAILABLE = 503;
 const GATEWAY_TIMEOUT = 504;
-
 const SERVER_ERROR_MESSAGE = "An error has occurred on the server.";
-
 const MONGO_DUPLICATE_KEY = 11000;
 const MONGOOSE_ERRORS = {
   CAST: "CastError",
@@ -24,30 +22,30 @@ const MONGOOSE_ERRORS = {
   NOT_FOUND: "DocumentNotFoundError",
 };
 
-class AppError extends Error {
-  constructor(statusCode, message, expose = true) {
-    super(message);
-    this.statusCode = statusCode;
-    this.expose = expose;
-  }
-}
+const buildAppError = (statusCode, defaultMessage, name) =>
+  class extends AppError {
+    constructor(message = defaultMessage) {
+      super(statusCode, message);
+      this.name = name;
+    }
+  };
 
-const buildAppError = (statusCode, defaultMessage, name) => {
-  function CustomAppError(message = defaultMessage) {
-    const error = new AppError(statusCode, message);
-    error.name = name;
-    return error;
-  }
-  return CustomAppError;
-};
-
+const BadRequestError = buildAppError(
+  BAD_REQUEST,
+  "Invalid data",
+  "BadRequestError"
+);
 const UnauthorizedError = buildAppError(
   UNAUTHORIZED,
   "Unauthorized",
   "UnauthorizedError"
 );
-
 const ForbiddenError = buildAppError(FORBIDDEN, "Forbidden", "ForbiddenError");
+const NotFoundError = buildAppError(
+  NOT_FOUND,
+  "Resource not found",
+  "NotFoundError"
+);
 const ConflictError = buildAppError(CONFLICT, "Conflict", "ConflictError");
 const UnprocessableEntityError = buildAppError(
   UNPROCESSABLE_ENTITY,
@@ -75,70 +73,47 @@ const GatewayTimeoutError = buildAppError(
   "GatewayTimeoutError"
 );
 
-function handleMongooseError(
-  res,
-  err,
-  ctx = {},
-  opts = { validationAs422: false }
-) {
-  console.error({
-    msg: "controller_error",
-    errName: err?.name,
-    errMsg: err?.message,
-    code: err?.code,
-    ...ctx,
-    ts: new Date().toISOString(),
-  });
-
-  if (err?.code === MONGO_DUPLICATE_KEY) {
-    return res.status(CONFLICT).send({ message: "Duplicate key" });
+function normalizeError(err) {
+  if (
+    err instanceof AppError &&
+    Number.isInteger(err.statusCode) &&
+    err.statusCode >= 400 &&
+    err.statusCode <= 599
+  ) {
+    return err;
   }
-
+  if (err?.code === MONGO_DUPLICATE_KEY) {
+    return new ConflictError("Duplicate key");
+  }
   if (
     err?.name === MONGOOSE_ERRORS.VALIDATION ||
-    err?.name === MONGOOSE_ERRORS.CAST
+    err?.name === MONGOOSE_ERRORS.CAST ||
+    err?.type === "entity.parse.failed"
   ) {
-    const status = opts.validationAs422 ? UNPROCESSABLE_ENTITY : BAD_REQUEST;
-    return res.status(status).send({ message: "Invalid data" });
+    return new BadRequestError();
   }
-
-  if (
-    err?.name === MONGOOSE_ERRORS.NOT_FOUND ||
-    err?.statusCode === NOT_FOUND
-  ) {
-    return res.status(NOT_FOUND).send({ message: "Resource not found" });
+  if (err?.type === "entity.too.large") {
+    return new AppError(413, "Request body is too large");
   }
-
-  return res
-    .status(INTERNAL_SERVER_ERROR)
-    .send({ message: SERVER_ERROR_MESSAGE });
+  if (err?.name === MONGOOSE_ERRORS.NOT_FOUND) {
+    return new NotFoundError();
+  }
+  if (err?.code === "ECONNABORTED" || err?.code === "ETIMEDOUT") {
+    return new GatewayTimeoutError();
+  }
+  if (err?.response?.status >= 500) {
+    return new BadGatewayError();
+  }
+  return new AppError(INTERNAL_SERVER_ERROR, SERVER_ERROR_MESSAGE, false);
 }
 
-function handleAppError(res, err, ctx = {}) {
-  console.error({
-    msg: "unhandled_error",
-    errName: err?.name,
-    errMsg: err?.message,
-    code: err?.code,
-    ...ctx,
-    ts: new Date().toISOString(),
-  });
-
-  if (err && (err.statusCode || err instanceof AppError)) {
-    const message = err.expose ? err.message : SERVER_ERROR_MESSAGE;
-    return res.status(err.statusCode).send({ message });
-  }
-
-  if (err?.code === "ECONNABORTED" || err?.code === "ETIMEDOUT") {
-    return res.status(GATEWAY_TIMEOUT).send({ message: "Gateway timeout" });
-  }
-  if (err?.response && err.response.status >= 500) {
-    return res.status(BAD_GATEWAY).send({ message: "Bad gateway" });
-  }
-
-  return res
-    .status(INTERNAL_SERVER_ERROR)
-    .send({ message: SERVER_ERROR_MESSAGE });
+function handleAppError(res, err) {
+  const error = normalizeError(err);
+  const message =
+    error.statusCode === INTERNAL_SERVER_ERROR || !error.expose
+      ? SERVER_ERROR_MESSAGE
+      : error.message;
+  return res.status(error.statusCode).send({ message });
 }
 
 function ok(res, data) {
@@ -152,7 +127,6 @@ function noContent(res) {
 }
 
 module.exports = {
-  // Status codes
   OK,
   CREATED,
   NO_CONTENT,
@@ -168,21 +142,20 @@ module.exports = {
   SERVICE_UNAVAILABLE,
   GATEWAY_TIMEOUT,
   SERVER_ERROR_MESSAGE,
-  // Mongoose identifiers
   MONGO_DUPLICATE_KEY,
   MONGOOSE_ERRORS,
-  // AppError family
   AppError,
+  BadRequestError,
   UnauthorizedError,
   ForbiddenError,
+  NotFoundError,
   ConflictError,
   UnprocessableEntityError,
   TooManyRequestsError,
   BadGatewayError,
   ServiceUnavailableError,
   GatewayTimeoutError,
-  // Handlers + helpers
-  handleMongooseError,
+  normalizeError,
   handleAppError,
   ok,
   created,

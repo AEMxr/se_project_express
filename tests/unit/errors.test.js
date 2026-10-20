@@ -1,4 +1,5 @@
 const errors = require("../../utils/errors");
+const errorHandler = require("../../middlewares/errorHandler");
 
 function response() {
   const res = { status: jest.fn(), send: jest.fn(), end: jest.fn() };
@@ -15,8 +16,10 @@ describe("Application errors", () => {
     });
   });
   test.each([
+    ["BadRequestError", 400, "Invalid data"],
     ["UnauthorizedError", 401, "Unauthorized"],
     ["ForbiddenError", 403, "Forbidden"],
+    ["NotFoundError", 404, "Resource not found"],
     ["ConflictError", 409, "Conflict"],
     ["UnprocessableEntityError", 422, "Invalid data"],
     ["TooManyRequestsError", 429, "Too many requests"],
@@ -24,9 +27,13 @@ describe("Application errors", () => {
     ["ServiceUnavailableError", 503, "Service unavailable"],
     ["GatewayTimeoutError", 504, "Gateway timeout"],
   ])(
-    "%s supplies the right status and can override its default message",
+    "%s supplies a status, default message and standard Error inheritance",
     (name, status, message) => {
-      expect(new errors[name]()).toMatchObject({
+      const error = new errors[name]();
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toBeInstanceOf(errors.AppError);
+      expect(error).toBeInstanceOf(errors[name]);
+      expect(error).toMatchObject({
         name,
         statusCode: status,
         message,
@@ -37,40 +44,55 @@ describe("Application errors", () => {
   );
 });
 
-describe("Mongoose error responses", () => {
+describe("Central error responses", () => {
   test.each([
     [{ code: 11000 }, 409, "Duplicate key"],
-    [{ name: "ValidationError" }, 400, "Invalid data"],
+    [
+      { name: "ValidationError", message: "Private field value" },
+      400,
+      "Invalid data",
+    ],
     [{ name: "CastError" }, 400, "Invalid data"],
     [{ name: "DocumentNotFoundError" }, 404, "Resource not found"],
-    [{ statusCode: 404 }, 404, "Resource not found"],
-    [new Error("Private details"), 500, errors.SERVER_ERROR_MESSAGE],
-  ])(
-    "maps %p to %s without leaking private error details",
-    (error, status, message) => {
-      const res = response();
-      errors.handleMongooseError(res, error);
-      expect(res.status).toHaveBeenCalledWith(status);
-      expect(res.send).toHaveBeenCalledWith({ message });
-    }
-  );
-  test("can report validation failures as 422", () => {
-    const res = response();
-    errors.handleMongooseError(
-      res,
-      { name: "ValidationError" },
-      {},
-      { validationAs422: true }
-    );
-    expect(res.status).toHaveBeenCalledWith(422);
-  });
-});
-
-describe("General error responses", () => {
-  test.each([
+    [
+      { type: "entity.parse.failed", body: "password=private" },
+      400,
+      "Invalid data",
+    ],
+    [{ type: "entity.too.large" }, 413, "Request body is too large"],
     [new errors.UnauthorizedError("Sign in"), 401, "Sign in"],
     [
       new errors.AppError(500, "Secret", false),
+      500,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      new errors.AppError(500, "Secret", true),
+      500,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      new errors.AppError(400, "Secret", false),
+      400,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      new errors.AppError(399, "Invalid status"),
+      500,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      new errors.AppError(600, "Invalid status"),
+      500,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      new errors.AppError("400", "Invalid status"),
+      500,
+      errors.SERVER_ERROR_MESSAGE,
+    ],
+    [
+      { statusCode: 400, message: "Untrusted exception" },
       500,
       errors.SERVER_ERROR_MESSAGE,
     ],
@@ -79,11 +101,23 @@ describe("General error responses", () => {
     [{ response: { status: 503 } }, 502, "Bad gateway"],
     [new Error("Secret"), 500, errors.SERVER_ERROR_MESSAGE],
     [undefined, 500, errors.SERVER_ERROR_MESSAGE],
-  ])("returns a safe response for %p", (error, status, message) => {
+  ])("maps %p to a safe %s JSON response", (error, status, message) => {
     const res = response();
-    errors.handleAppError(res, error);
+    const next = jest.fn();
+    expect(errorHandler(error, {}, res, next)).toBe(res);
     expect(res.status).toHaveBeenCalledWith(status);
     expect(res.send).toHaveBeenCalledWith({ message });
+    expect(next).not.toHaveBeenCalled();
+  });
+  test("does not send a second response when headers have already been sent", () => {
+    const error = new Error("stream failed");
+    const res = response();
+    res.headersSent = true;
+    const next = jest.fn();
+    errorHandler(error, {}, res, next);
+    expect(next).toHaveBeenCalledWith(error);
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.send).not.toHaveBeenCalled();
   });
 });
 

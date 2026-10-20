@@ -14,6 +14,7 @@ module.exports = {
     "middlewares/**/*.js",
     "routes/**/*.js",
     "utils/errors.js",
+    "utils/AppError.js",
   ],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "html", "json-summary"],

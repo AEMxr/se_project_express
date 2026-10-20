@@ -1,33 +1,23 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const { errors } = require("celebrate");
 const routes = require("./routes");
-const { handleAppError, BAD_REQUEST } = require("./utils/errors");
+const errorHandler = require("./middlewares/errorHandler");
+const { createLoggers } = require("./middlewares/logger");
 
 const { PORT = 3001, MONGODB_URI = "mongodb://127.0.0.1:27017/wtwr_db" } =
   process.env;
-
+const { requestLogger, errorLogger } = createLoggers();
 const app = express();
 
+app.use(requestLogger);
 app.use(cors());
 app.use(express.json());
-
 app.use("/", routes);
-
-app.use((err, req, res, next) => {
-  if (err && err.type === "entity.parse.failed") {
-    return res.status(BAD_REQUEST).send({ message: "Invalid data" });
-  }
-  return next(err);
-});
-
-app.use((err, req, res, next) => {
-  handleAppError(res, err, {
-    path: req.path,
-    method: req.method,
-    hasNext: typeof next === "function",
-  });
-});
+app.use(errorLogger);
+app.use(errors());
+app.use(errorHandler);
 
 if (require.main === module) {
   mongoose

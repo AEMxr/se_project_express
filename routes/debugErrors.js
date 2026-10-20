@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const {
-  BAD_REQUEST,
+  BadRequestError,
   UnauthorizedError,
   ForbiddenError,
   ConflictError,
@@ -13,9 +13,9 @@ const {
   INTERNAL_SERVER_ERROR,
 } = require("../utils/errors");
 
-router.get("/400", (req, res) =>
-  res.status(BAD_REQUEST).send({ message: "Invalid data" }),
-);
+router.get("/400", (req, res, next) => {
+  next(new BadRequestError());
+});
 
 router.get("/401", (req, res, next) => {
   next(new UnauthorizedError());
@@ -54,4 +54,3 @@ router.get("/500", (req, res, next) => {
 });
 
 module.exports = router;
-

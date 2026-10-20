@@ -37,6 +37,8 @@ This backend supports:
 - **Mongoose**
 - **JSON Web Tokens**
 - **bcryptjs**
+- **Celebrate / Joi**
+- **Winston / express-winston**
 - **validator**
 - **cors**
 - **ESLint**
@@ -164,7 +166,10 @@ The clothing item schema includes:
 │   ├── clothingItems.js
 │   └── users.js
 ├── middlewares
-│   └── auth.js
+│   ├── auth.js
+│   ├── errorHandler.js
+│   ├── logger.js
+│   └── validation.js
 ├── models
 │   ├── clothingItem.js
 │   └── user.js
@@ -174,6 +179,7 @@ The clothing item schema includes:
 │   ├── index.js
 │   └── users.js
 ├── utils
+│   ├── AppError.js
 │   ├── config.js
 │   └── errors.js
 ├── app.js
@@ -265,7 +271,7 @@ This project was tested with:
 - GitHub Actions validation
 - ESLint
 
-The current project does not yet include a full automated integration test suite. A strong future improvement would be adding automated tests for authentication, authorization, ownership checks, and standardized error responses.
+The automated test branch includes Jest, SuperTest and disposable MongoDB suites for authentication, authorization, ownership, validation, logging and standardized error responses. See [TESTING.md](TESTING.md).
 
 ---
 
@@ -286,11 +292,9 @@ Current status:
 
 Known future improvements:
 
-- Add automated integration tests
 - Guard or disable `/test-errors` outside development
 - Move JWT secret handling to environment variables
 - Add deployment documentation
-- Improve production-level logging
 - Add screenshots or request/response examples
 - Connect this backend to the WTWR frontend authentication flow
 
@@ -313,3 +317,5 @@ The biggest lesson from this project was that backend development is not just ab
 ## Automated testing
 
 See [TESTING.md](TESTING.md) for Jest, SuperTest, disposable MongoDB tests, coverage, and commands.
+
+See [VALIDATION.md](VALIDATION.md) for Celebrate/Joi request schemas, centralized error handling, safe logging and dependency compatibility.
