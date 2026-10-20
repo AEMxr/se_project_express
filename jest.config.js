@@ -10,11 +10,13 @@ module.exports = {
   collectCoverageFrom: [
     "app.js",
     "controllers/**/*.js",
+    "services/**/*.js",
     "models/**/*.js",
     "middlewares/**/*.js",
     "routes/**/*.js",
     "utils/errors.js",
     "utils/AppError.js",
+    "utils/loadEnvironment.js",
   ],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "html", "json-summary"],

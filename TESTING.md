@@ -38,6 +38,8 @@ There is no need to start the normal Express server or MongoDB service first. Su
 
 The API suite uses SuperTest with the real app, middleware, routes, controllers, models, bcrypt, and JWT. Most database operations are real; one deliberate database-failure case mocks a query to verify a safe 500 response.
 
+The weather suites add mocked-provider coverage for credential-free HTTP responses/logs, fixed upstream URLs, validated coordinates, rate limits, bounded caching/concurrency, request deduplication and timeout cleanup. Environment tests prove local server credentials are not read during tests. See [WEATHER.md](WEATHER.md) for startup and deployment requirements.
+
 ## Disposable database lifecycle
 
 The helper in `tests/helpers/database.js` starts a dedicated MongoDB process bound to loopback on a temporary port. Each suite gets a unique `wtwr_test_...` database. It never accepts the normal `MONGODB_URI`.
@@ -59,7 +61,7 @@ Substitute the actual installed path. The helper reads that executable's version
 
 ## App startup and corrections found by tests
 
-`app.js` exports Express without startup side effects. Its database connection and `app.listen()` run only when the file is executed directly with `node app.js`, including through the existing start/dev scripts.
+`app.js` exports Express without opening a database connection or HTTP listener. Its database connection and `app.listen()` run only when the file is executed directly with `node app.js`, including through the existing start/dev scripts.
 
 The regression tests exposed two input-handling defects. Requests to create a garment without a body and signup/signin requests with non-string passwords used to return 500. The test branch now reports those as 400 client errors. Normal account and garment behavior is preserved.
 
@@ -69,7 +71,7 @@ Compatible dependency audit fixes are also captured in this worktree's lockfile.
 
 ## Results and limits
 
-On October 19, 2026: **187 tests across 7 suites pass**, with **98.17% line coverage**, **99.18% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
+On October 19, 2026: **234 tests across 10 suites pass**, with **98.59% line coverage**, **98.93% branch coverage**, and **100% function coverage**. The coverage gate requires at least 90% lines/statements, 85% branches, and 95% functions.
 
 The `--detectOpenHandles` run also passes and exits normally. Open `coverage/index.html` after a coverage run for uncovered paths, including direct production startup. Coverage files are ignored by Git and lint.
 

@@ -1,7 +1,13 @@
 const router = require("express").Router();
 const { NotFoundError } = require("../utils/errors");
 const auth = require("../middlewares/auth");
-const { validateSignup, validateSignin } = require("../middlewares/validation");
+const {
+  validateSignup,
+  validateSignin,
+  validateWeatherQuery,
+} = require("../middlewares/validation");
+const { getCurrentWeather } = require("../controllers/weather");
+const { createWeatherLimiter } = require("../middlewares/weatherLimiter");
 const usersRouter = require("./users");
 const itemsRouter = require("./clothingItems");
 const debugErrorsRouter = require("./debugErrors");
@@ -14,6 +20,12 @@ router.get("/", (req, res) => {
 router.post("/signin", validateSignin, login);
 router.post("/signup", validateSignup, createUser);
 router.get("/items", getItems);
+router.get(
+  "/weather",
+  createWeatherLimiter(),
+  validateWeatherQuery,
+  getCurrentWeather
+);
 router.use("/test-errors", debugErrorsRouter);
 router.use(auth);
 router.use("/users", usersRouter);

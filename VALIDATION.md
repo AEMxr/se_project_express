@@ -20,6 +20,8 @@ Unknown body fields are explicitly stripped to preserve the existing API contrac
 
 Mongoose schema validation, unique indexes and update validators remain in place as the database's additional checks. Express's existing JSON body limit rejects oversized requests with 413, and malformed JSON returns 400.
 
+`GET /weather` also validates numeric latitude (−90 to 90) and longitude (−180 to 180) before calling the fixed upstream provider. Unknown query parameters, including caller-supplied keys/URLs/units, are rejected. Weather requests have an independent per-client rate limit. See [WEATHER.md](WEATHER.md).
+
 ## Centralized failures
 
 Controllers return their promise chains and finish with `.catch(next)`. Known errors extend `AppError`; incorrect credentials use `UnauthorizedError`, and ownership failures use `ForbiddenError`.

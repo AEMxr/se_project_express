@@ -19,3 +19,8 @@ node_modules
 
 # Test reports
 coverage/
+
+# Server environment files; only the placeholder template is tracked.
+.env
+.env.*
+!.env.example

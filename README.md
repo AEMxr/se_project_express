@@ -18,6 +18,7 @@ This backend supports:
 - Password hashing with `bcryptjs`
 - JWT-based authentication
 - Protected routes for user-specific actions
+- Server-side weather requests with private credentials, bounded caching and request limits
 - Public access to clothing items
 - Clothing item creation and deletion
 - Ownership checks before deletion
@@ -107,13 +108,14 @@ These routes are useful for manually checking standardized error responses durin
 
 ### Public Routes
 
-| Method | Endpoint       | Description                              |
-| ------ | -------------- | ---------------------------------------- |
-| `GET`  | `/`            | Health check route                       |
-| `POST` | `/signup`      | Register a new user                      |
-| `POST` | `/signin`      | Log in and receive a JWT                 |
-| `GET`  | `/items`       | Get all clothing items                   |
-| `GET`  | `/test-errors` | Development-only error diagnostic routes |
+| Method | Endpoint                   | Description                                       |
+| ------ | -------------------------- | ------------------------------------------------- |
+| `GET`  | `/`                        | Health check route                                |
+| `POST` | `/signup`                  | Register a new user                               |
+| `POST` | `/signin`                  | Log in and receive a JWT                          |
+| `GET`  | `/items`                   | Get all clothing items                            |
+| `GET`  | `/weather?lat=...&lon=...` | Get weather without exposing provider credentials |
+| `GET`  | `/test-errors`             | Development-only error diagnostic routes          |
 
 ### Protected Routes
 
@@ -164,12 +166,14 @@ The clothing item schema includes:
 .
 ├── controllers
 │   ├── clothingItems.js
-│   └── users.js
+│   ├── users.js
+│   └── weather.js
 ├── middlewares
 │   ├── auth.js
 │   ├── errorHandler.js
 │   ├── logger.js
-│   └── validation.js
+│   ├── validation.js
+│   └── weatherLimiter.js
 ├── models
 │   ├── clothingItem.js
 │   └── user.js
@@ -178,10 +182,13 @@ The clothing item schema includes:
 │   ├── debugErrors.js
 │   ├── index.js
 │   └── users.js
+├── services
+│   └── weather.js
 ├── utils
 │   ├── AppError.js
 │   ├── config.js
-│   └── errors.js
+│   ├── errors.js
+│   └── loadEnvironment.js
 ├── app.js
 ├── package.json
 ├── README.md
@@ -319,3 +326,7 @@ The biggest lesson from this project was that backend development is not just ab
 See [TESTING.md](TESTING.md) for Jest, SuperTest, disposable MongoDB tests, coverage, and commands.
 
 See [VALIDATION.md](VALIDATION.md) for Celebrate/Joi request schemas, centralized error handling, safe logging and dependency compatibility.
+
+## Weather configuration
+
+The `/weather` endpoint is public. Store `OPEN_WEATHER_API_KEY` only in this backend worktree's ignored `.env.local` or the backend host's environment; no weather key belongs in frontend variables. Normal startup loads that local file, while tests skip it. The existing local key was migrated without changing the original backend checkout. See [WEATHER.md](WEATHER.md) for startup, limits, deployment and tests.

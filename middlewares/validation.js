@@ -84,7 +84,18 @@ const validateItemId = celebrate(
   options
 );
 
+const validateWeatherQuery = celebrate(
+  {
+    [Segments.QUERY]: Joi.object({
+      lat: Joi.number().min(-90).max(90).required(),
+      lon: Joi.number().min(-180).max(180).required(),
+    }).required(),
+  },
+  { abortEarly: false, convert: true }
+);
+
 module.exports = {
+  validateWeatherQuery,
   validateSignup,
   validateSignin,
   validateProfile,
