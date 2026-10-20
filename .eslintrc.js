@@ -1,5 +1,5 @@
 module.exports = {
-  ignorePatterns: ["coverage/"],
+  ignorePatterns: ["coverage/", ".course-tests/"],
   env: {
     es2021: true,
     node: true,

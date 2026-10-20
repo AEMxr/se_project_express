@@ -24,3 +24,6 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# Course harness downloaded by GitHub Actions.
+.course-tests/

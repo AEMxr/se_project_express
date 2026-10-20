@@ -1,6 +1,6 @@
 # Backend test suites
 
-All changes are isolated in the `se_project_express-tests` worktree on branch `automated-tests`. The original `se_project_express` checkout and optional iPhone backend are unchanged.
+All changes are isolated in the `se_project_express-tests` worktree on branch `automated-tests`. The original `se_project_express` tracked files and optional iPhone backend are unchanged. Its ignored local weather configuration is prepared separately for the eventual merge.
 
 ## Run in Git Bash
 
@@ -68,6 +68,22 @@ The regression tests exposed two input-handling defects. Requests to create a ga
 Request bodies and item IDs are now validated with Celebrate/Joi before controller work, and all controller failures flow through centralized middleware. Logging tests use memory streams; default Jest loggers do not create files. See [VALIDATION.md](VALIDATION.md) for schemas, middleware order, log contents and dependency compatibility.
 
 Compatible dependency audit fixes are also captured in this worktree's lockfile. No forced major downgrades were applied.
+
+## GitHub Actions
+
+The workflow runs on pushes to main, pull requests targeting main, and manual dispatch. Both testing jobs use Node 22, matching the project's minimum supported version.
+
+- The automated job installs the project's lockfile, runs ESLint and runs Jest with coverage. Its MongoDB instances are disposable and need no normal database service or real credentials.
+- The course job downloads the public Project 12 or 13 harness into `.course-tests`. Its scripts still run one directory below the app root, without overwriting or nesting into our existing `tests` folder.
+- The course job's MongoDB and endpoint checks run on a separate GitHub-hosted runner. Do not run those external endpoint scripts against your normal local database.
+
+The downloaded harness is ignored by Git and ESLint. Our Jest patterns continue to include only our own `tests/**/*.test.js` files.
+
+The original backend checkout's local `.env.local` has been prepared without changing its tracked files. A local Git exclusion protects that file before the new `.gitignore` reaches main. This is local configuration, not part of the merge or any push.
+
+Local verification passes all 234 backend tests on Node 22.23.3, along with ESLint, Prettier, workflow YAML parsing and Bash syntax checks.
+
+GitHub's full course job still needs to run after these changes are pushed; local Jest and workflow checks do not substitute for the remote grader.
 
 ## Results and limits
 
