@@ -30,7 +30,7 @@ if (require.main === module) {
     .connect(MONGODB_URI)
     .then(() => {
       console.warn("MongoDB connected");
-      app.listen(PORT, () => {
+      app.listen(PORT, process.env.BIND_HOST || undefined, () => {
         console.warn(`Server listening on port ${PORT}`);
       });
     })
