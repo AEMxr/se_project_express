@@ -1,0 +1,12 @@
+
+[Unit]
+Description=WTWR Ubuntu VM health check
+After=mongod.service pm2-aem.service
+
+[Service]
+Type=oneshot
+User=aem
+Environment=HOME=/home/aem
+Environment=PM2_HOME=/home/aem/.pm2
+WorkingDirectory=/home/aem/projects/se_project_express
+ExecStart=/usr/bin/node docs/deployment/virtualbox/scripts/healthcheck.js
