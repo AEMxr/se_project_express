@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
@@ -60,9 +59,7 @@ async function checkPM2() {
   const processes = JSON.parse(stdout);
 
   const running = processes.some(
-    (app) =>
-      app.name === "wtwr-vm-api" &&
-      app.pm2_env?.status === "online"
+    (app) => app.name === "wtwr-vm-api" && app.pm2_env?.status === "online"
   );
 
   if (!running) {
@@ -79,18 +76,20 @@ async function main() {
 
   let failures = 0;
 
-  for (const [name, check] of checks) {
+  await checks.reduce(async (previousCheck, [name, check]) => {
+    await previousCheck;
+
     try {
       await check();
-      console.log(`[PASS] ${name}`);
+      process.stdout.write(`[PASS] ${name}\n`);
     } catch (error) {
       failures += 1;
       console.error(`[FAIL] ${name}: ${error.message}`);
     }
-  }
+  }, Promise.resolve());
 
-  console.log(
-    `Result: ${checks.length - failures}/${checks.length} checks passed`
+  process.stdout.write(
+    `Result: ${checks.length - failures}/${checks.length} checks passed\n`
   );
 
   if (failures > 0) {
