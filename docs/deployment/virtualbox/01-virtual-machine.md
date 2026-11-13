@@ -1,8 +1,16 @@
 # Sprint 15 — Local Ubuntu Server Lab: VM Setup and Security Baseline
 
+> **2026-10-31 checkpoint update:** This document records the *historical pre-boot state*, not the current live settings. On October 31, the VM initially ran with one vCPU, a localhost-only SSH forwarding rule and an unexpected `localhostReachable="1"`. After a graceful shutdown, the user **verified** the saved powered-off setting was restored to `localhostReachable="0"` and the SSH forward remained in place. The user then restarted the VM and verified SSH, kernel `6.8.0-147-generic`, and `localhostReachable="0"` while running (October 31). See [05 — VM deployment log](05-vm-application-deployment.md). Earlier statements about “no forwarding” or “Ubuntu not installed” are time-specific, not current claims.
+
+> **Record updated:** October 31, 2026. This document preserves the **October 24 pre-installation log** as historical evidence. Some original sentences describe what was *pending at that time*; they do not describe the current VM. For verified later results, read [02 — Ubuntu operations](02-ubuntu-operations.md) and [03 — Cloud deployment](../render/03-cloud-deployment.md). See the updated requirements tracker below.
+>
+> **Current summary:** Ubuntu Server 24.04.5 is installed and bootable; SSH, NAT localhost-only forwarding, firewall/DNS, Git, Node.js 24, npm and Express tests were exercised. PM2 and Nginx remain pending. A live WTWR backend has been deployed independently to Render, a frontend to GitHub Pages, and Atlas stores application data. The VM itself is **not publicly hosted**.
+>
+> **Security accuracy:** A Windows-loopback-only SSH NAT rule was added *after* the Oct 24 empty-forwarding-table baseline. The VM's guest-side UFW policies were configured, but host-enforced isolation and active Secure Boot enforcement are not claimed as verified.
+
 > **Project:** `se_project_express` / `se_project_react`  
 > **Local VM:** `TripleTen-Project15`  
-> **Documentation status (October 24, 2026):** VM created and powered off; virtual hardware hardening and NAT localhost restriction verified in the saved configuration. Secure Boot was selected in the settings GUI, but key reset was **not confirmed**, and saved Secure Boot status/enforcement are **not yet verified**. Ubuntu installation and broader host/LAN isolation **remain pending**.
+> **Historical status (October 24, 2026; superseded by later records):** VM created and powered off; virtual hardware hardening and NAT localhost restriction verified in the saved configuration. Secure Boot was selected in the settings GUI, but key reset was **not confirmed**, and saved Secure Boot status/enforcement are **not yet verified**. Ubuntu installation and broader host/LAN isolation **remain pending**.
 
 ## 1. Purpose and deployment approach
 
@@ -367,7 +375,7 @@ and disconnects the VM's only enabled network adapter.
 Secure Boot key enrollment and actual boot enforcement
 still require verification.
 
-## 7. Security checklist and actual status
+## 7. Historical security checklist (October 24 snapshot)
 
 | Check | Status as of October 24, 2026 | Evidence or limitation |
 |---|---|---|
@@ -395,7 +403,7 @@ still require verification.
 | Backup/snapshot and restoration | **Not yet done** | Recovery plan required |
 | Public exposure of the local VM | **No intended exposure** | No port forwarding configured; external reachability not independently tested |
 
-## 8. Next checkpoint — Ubuntu first-boot preparation
+## 8. Historical next checkpoint — Ubuntu first-boot preparation (subsequently completed)
 
 The pre-boot VirtualBox device-hardening and localhost-reachability configuration checks are complete. **Do not yet mark network isolation complete.** Before the first Ubuntu installation boot, the next checkpoint is to:
 
@@ -415,22 +423,31 @@ The pre-boot VirtualBox device-hardening and localhost-reachability configuratio
 - Ubuntu installer screens showing OS selection and configuration (omit passwords, credentials, and any secrets).
 - Guest terminal output verifying installed OS release *after* installation.
 
-## 9. Sprint 15 requirements tracker
+## 9. Sprint 15 requirements tracker — updated October 31, 2026
 
-| Topic | Status |
-|---|---|
-| VM provisioning / local virtualization | **VM created and pre-boot configuration verified; guest installation pending** |
-| SSH access and administration | Not started |
-| Git and Node.js on Ubuntu | Not started |
-| MongoDB deployment/connectivity | Not started |
-| PM2 process manager and restart exercise | Not started; **PM2 required for this exercise** |
-| Nginx reverse proxy and static frontend | Not started |
-| Backend/frontend end-to-end testing | Not started |
-| Render public deployment over HTTPS | Not started |
-| Temporary `/crash-test` review exercise | Not started; remove/restrict after controlled testing |
-| Exact cloud-VM rubric equivalence | **Requires separate confirmation**; Render approval does not necessarily approve local VM substitution |
+The earlier October 24 checkpoints in sections 1–8 are historical; the following represents evidence available through October 31. “Verified” means observed in the recorded session, not a fresh independent recheck today.
 
-I will update this tracker after each verified checkpoint, rather than documenting planned configurations as completed work.
+| Topic | Updated status | Evidence / remaining question |
+|---|---|---|
+| VM and Ubuntu provisioning | **Verified** | Ubuntu Server 24.04.5 installed with encrypted LUKS/LVM root; boot successful; kernel 6.8.0-147-generic observed after upgrades |
+| UEFI Secure Boot | **Partly verified** | Saved `SecureBoot="on"`; boot-time enforcement / enrolled trust state not conclusively documented |
+| NAT / SSH | **Verified to localhost** | Host port `127.0.0.1:2222` forwards to guest SSH `22`; public exposure was not configured |
+| Guest firewall and DNS | **Configured and exercised** | IPv4 private-range egress denials, limited service egress, DNS; guest-root bypass / host-enforced segregation remains a limitation |
+| Git, Node.js, npm | **Verified** | Ubuntu Node 24.22.2 and npm 11.19.1; repository cloned and updated |
+| Express source and dependencies | **Verified** | Git commit `7e4278c`; patched transitive `body-parser` 2.4.0; production npm audit reported zero findings at check time |
+| Jest tests on Ubuntu | **Verified** | 14 suites / 286 tests passed |
+| Persistent MongoDB installed on Ubuntu | **Not done by design** | Existing Windows MongoDB and Atlas verified; no Ubuntu `mongod` service installed |
+| PM2 and Nginx inside VM | **Pending** | Process manager, reverse proxy, frontend serving and restart testing still to do |
+| Render backend / Atlas | **Verified operational** | Public Express endpoints, database authentication, one saved user and clothing item evidenced |
+| GitHub Pages frontend | **Verified operational** | Successful `verify` and `publish` Actions jobs; live React interface |
+| Cloud registration / item / weather | **Verified in browser** | Register/login, avatar, clothing create/read/persistence, weather recommendation observed |
+| Disaster recovery / backup | **Pending** | Atlas backup policy and isolated restore exercise not yet verified |
+| Deployment security review | **Pending** | Exposed Atlas credential rotation, proxy/rate-limit review, CORS and end-to-end negative cases |
+| VM-specific course rubric equivalence | **Needs confirmation** | Render use approved; exact equivalence of local VM lab vs assigned cloud VM not independently established |
+
+**October 31 NAT correction:** In PowerShell, the guest was confirmed `VMState="poweroff"`, `--nat-localhostreachable1 off` was applied, and the saved state showed `localhostReachable="0"` with the SSH port forward intact. Recheck this after the next boot. See section [05](05-vm-application-deployment.md).
+
+For implementation detail, use [Ubuntu operations](02-ubuntu-operations.md), [cloud deployment](../render/03-cloud-deployment.md), and [remaining checks](../04-verification-and-runbook.md).
 
 ## 10. References
 
@@ -447,4 +464,4 @@ I will update this tracker after each verified checkpoint, rather than documenti
 
 **Documentation rule:** Record exactly what was executed or observed, explain the reason for each setting, retain verification evidence, and keep unfinished work explicitly marked as unfinished. Never add credentials, `.env` contents, API keys, private SSH keys, or access tokens to the repository.
 
-**Screenshot rule:** Images referenced as `images/<filename>.png` must exist alongside this file under `docs/deployment/images/`. Verify them in VS Code Markdown Preview (`Ctrl+Shift+V`) before committing. The Markdown references do not establish that the underlying PNGs are present.
+**Screenshot rule:** Images referenced as `images/<filename>.png` must exist alongside this file under `docs/deployment/virtualbox/images/`. Verify them in VS Code Markdown Preview (`Ctrl+Shift+V`) before committing. The Markdown references do not establish that the underlying PNGs are present.
