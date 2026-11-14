@@ -1227,3 +1227,24 @@ sudo nginx -t
 ```
 
 **Host portability:** NAT maintains a guest-internal IP independent of which household network Windows joins, assuming the same VirtualBox NAT and guest network configuration. The VM is not thereby globally portable to arbitrary host OS/hardware, and internet access is still dependent on the host's connectivity. Export, credential hygiene, and restoration should be documented and tested separately before claiming external-drive portability.
+
+### 15AX — PM2 crash-recovery verification (November 14, 2026 Pacific)
+
+**Environment:** Private Ubuntu VirtualBox VM.
+
+**Test:** A temporary `/crash-test` route deliberately terminated the Express process while PM2 supervised `wtwr-vm-api`.
+
+**Observed results:**
+- Before testing: PM2 restart count `0`.
+- Manual restart to enable the test: count `1`.
+- Request to `/crash-test`: Nginx returned HTTP `502 Bad Gateway`.
+- PM2 automatically recovered Express: restart count `2`, status `online`, PID `19442`.
+- Root endpoint returned `{"status":"ok"}`.
+- Temporary route removed using `git restore`.
+- Normal environment restored and PM2 restarted: count `3`, PID `19520`.
+- `/crash-test` returned HTTP `404`.
+- Root endpoint again returned `{"status":"ok"}`.
+- `pm2 save` successfully wrote `/home/aem/.pm2/dump.pm2`.
+- Testing remained on the private VM; the temporary route was not deployed to Render.
+
+**Result:** PASS — PM2 automatically restarted Express after a deliberate process failure. The application recovered, and temporary testing modifications were removed.
