@@ -1,10 +1,10 @@
 # Sprint 15 — Private Ubuntu Application Deployment: Checkpoint Log
 
-> **Started:** October 31, 2026  
-> **Historical baseline (Oct. 31):** MongoDB 8.0.34 successfully started on Ubuntu; `systemctl is-active mongod` returned `active`, `ss` showed `127.0.0.1:27017`, and `mongosh` ping returned `1` (checkpoint 15AS.3). The VM `.env.local` is Git-ignored and now explicitly targets the local `wtwr_vm_lab` database (15AS.5). File mode `600` and a clean Git branch were confirmed. Application-level Mongoose connectivity to `wtwr_vm_lab` is verified (15AS.6). **PM2 7.1.1 now supervises Express as `aem`** and its logs confirm MongoDB connected and port 3001 listening (15AT.2). Guest-local HTTP responses, listening-interface assessment, service boot persistence, Nginx, and recovery testing remain pending.  
-> **Latest (Nov. 12 Pacific):** Recovered after network relocation/reboot: `mongod` manually restored and verified `active`/`enabled`, PM2 `wtwr-vm-api` manually restored `online`, fresh MongoDB/port 3001 log messages; HTTP smoke check and actual boot persistence still **pending**. See 15AT.3–15AT.8 below.  
-> **Evidence policy:** Each checkpoint is **pending** until its actual terminal output or observed behavior is recorded. Do not confuse planned steps below with commands already performed.  
-> **Related:** [Ubuntu baseline](02-ubuntu-operations.md) · [Cloud deployment](../render/03-cloud-deployment.md) · [Verification / recovery](../04-verification-and-runbook.md)
+> **Started:** October 31, 2026. **Latest verification:** November 13, 2026 Pacific.  
+> **Current result (verified):** MongoDB Community 8.0.34, PM2-managed Express, localhost-only Nginx 1.24.0 reverse proxy, and a systemd-scheduled JavaScript health checker are installed. A controlled reboot confirmed `mongod`, `pm2-aem`, `nginx`, and `wtwr-healthcheck.timer` all `active`. Nginx returned `{"status":"ok"}` through Express and the checker returned 3/3 PASS.  
+> **Historical checkpoints below:** Each dated subsection records what was known **at that time**, so phrases such as “pending Nginx” in October/early November sections are superseded by the verified November 13 work in section G.  
+> **Evidence policy:** Observations are distinguished from plans. See the screenshots and test results; this record does not claim full rubric completion, internet exposure testing, backups, or authenticated-data round trips.  
+> **Related:** [Ubuntu baseline](02-ubuntu-operations.md) · [Render deployment](../render/03-cloud-deployment.md) · [Verification / recovery](../04-verification-and-runbook.md)
 
 ## A. Scope and separation
 
@@ -15,7 +15,7 @@ The functional public application remains independent of the private lab:
 - **Public application database:** Atlas `wtwr_render`; **never** use its live credentials or records for destructive VM experiments.
 - **Private lab:** VirtualBox VM `TripleTen-Project15` on Windows 11. Lab is for SSH, Linux, process supervision, Nginx, private frontend serving, application reliability, and recovery exercises.
 
-The Ubuntu VM has the cloned backend and **286 passing Jest tests**. **MongoDB Community Server 8.0.34 has been installed**, with installed packages and configured loopback-only binding verified; its service is now **running** with a verified `127.0.0.1:27017` socket and successful local database ping (15AS.3); PM2 is running Express on port 3001 (15AT.2), but no verified Nginx deployment exists. Its existing `.env.local` contains a separate JWT signing secret and now a guest-local MongoDB URI, not Atlas credentials. The Windows local `wtwr_db` and Atlas `wtwr_db` are also distinct; neither is a failover or backup service for `wtwr_render`.
+The Ubuntu VM has the cloned backend and **286 passing Jest tests**. **MongoDB Community Server 8.0.34 has been installed**, with installed packages and configured loopback-only binding verified; its service is now **running** with a verified `127.0.0.1:27017` socket and successful local database ping (15AS.3); PM2 is running Express on port 3001 (15AT.2), and Nginx has subsequently been configured, restarted and verified in section G (15AV). Its existing `.env.local` contains a separate JWT signing secret and now a guest-local MongoDB URI, not Atlas credentials. The Windows local `wtwr_db` and Atlas `wtwr_db` are also distinct; neither is a failover or backup service for `wtwr_render`.
 
 **Security boundary:** The lab must not become a public server. Do not open router ports, add bridged adapters, forward public host ports, or expose the host's MongoDB to the VM. Guest UFW alone is not host-enforced network isolation. Existing localhost-only SSH forwarding is the one recorded exception.
 
@@ -1017,11 +1017,213 @@ sudo ss -lntp | grep ':3001'
 
 ### 15AT.12 — Node.js health-check draft (NOT ADOPTED OR EXECUTED)
 
-User requested an automated verification flow written in JavaScript for TripleTen coursework, rather than Python. A standalone read-only candidate is included as [`../../scripts/vm-healthcheck.js`](scripts/vm-healthcheck.js). It uses Node built-ins (`child_process`, global `fetch`), and checks:
+User requested an automated verification flow written in JavaScript for TripleTen coursework, rather than Python. The old candidate was superseded by the **user-created and GitHub-tracked** [`scripts/healthcheck.js`](scripts/healthcheck.js), verified in section G (15AU). It uses Node built-ins (`child_process`, global `fetch`), and checks:
 
 - MongoDB `systemctl is-active` and `is-enabled`.
 - PM2's `wtwr-vm-api` online status (`pm2 jlist` as normal user).
 - Local port 3001 socket and a warning for wildcard interface binding.
 - `GET /` -> JSON status `ok`; `GET /items` -> HTTP 200 and JSON array.
 
-**Important:** The included script is an earlier assistant-generated draft, retained unchanged for reference. The user chose to develop the final health checker collaboratively, step by step. It has **not** been installed, approved for operation, executed on the Ubuntu VM, or scheduled at boot. Do not treat it as a completed deployment checkpoint. Startup persistence still requires separate PM2 save/startup configuration, with testing after reboot.
+**Historical note:** The standalone draft was not adopted; the final collaborative implementation was written in VS Code, pushed to GitHub and verified on Ubuntu in 15AU. The timer and full reboot were verified later. See section G for commands and evidence.
+
+
+## G. Verified continuation — November 13, 2026 (15AU–15AW)
+
+This section updates the historical state in prior checkpoints. Commands shown here were run by the user unless explicitly identified as source configuration or an expected check. Local times are Pacific; terminal screenshots sometimes display UTC timestamps. No public Render settings were modified as part of these VM operations.
+
+### 15AU.1–15AU.5 — Persist PM2, enable boot integration, test actual recovery (VERIFIED)
+
+**Before change:** The first post-move Ubuntu reboot had left MongoDB inactive and PM2 with an empty process list; MongoDB was subsequently started and enabled in 15AT.5–15AT.7. Express was manually restored in 15AT.8. The aim here was to avoid that manual recovery on future boots.
+
+From the project directory, with `wtwr-vm-api` `online`, the user ran as `aem`:
+
+```bash
+pm2 list
+pm2 save
+pm2 startup systemd
+```
+
+`pm2 save` reported `Successfully saved in /home/aem/.pm2/dump.pm2` (application state saved). `pm2 startup systemd` displayed its privileged installation command. After inspection, the user executed the exact command generated by PM2, structurally:
+
+```bash
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u aem --hp /home/aem
+systemctl is-enabled pm2-aem
+```
+
+**Observed:** A `pm2-aem.service` symlink was created; `is-enabled` returned `enabled`. The generated unit contained `User=aem`, `PM2_HOME=/home/aem/.pm2` and `ExecStart=.../pm2 resurrect` (restores the saved PM2 application list). The exact executable path and PATH should be regenerated for a different host, not blindly copied.
+
+A controlled `sudo reboot` followed. After the encrypted disk was unlocked and a shell was obtained:
+
+```bash
+systemctl is-active mongod pm2-aem
+pm2 list
+curl -sS --max-time 5 http://127.0.0.1:3001/
+```
+
+**Observed:** Both systemd units were `active`, PM2 listed `wtwr-vm-api` `online` as `aem`, and the HTTP body was `{"status":"ok"}`. This constitutes actual automated MongoDB/PM2/Express recovery, **not** just installed configuration.
+
+![PM2 process list saved](images/ubuntu-pm2-process-save-2026-11-13.png)
+
+![PM2 generated startup command](images/ubuntu-pm2-startup-generated-2026-11-13.png)
+
+![PM2 systemd startup enabled](images/ubuntu-pm2-startup-systemd-enabled-2026-11-13.png)
+
+![MongoDB and PM2 recovered after reboot, Express responding](images/ubuntu-pm2-reboot-recovery-2026-11-13.png)
+
+### 15AU.6 — JavaScript health checker built collaboratively and automated (VERIFIED)
+
+**Code ownership and deployment:** The user authored the operational checker in VS Code, committed and pushed it to GitHub, and pulled it onto the Ubuntu clone. An earlier file created directly with Nano was untracked and initially blocked `git pull` (`untracked working tree files would be overwritten`); the user deleted that old copy and a fast-forward pull succeeded. The current tracked script is [`scripts/healthcheck.js`](scripts/healthcheck.js); the earlier unused `vm-healthcheck.js` draft is not part of the adopted implementation.
+
+**Checks implemented:**
+
+1. HTTP `GET http://127.0.0.1:3001/` via built-in Node `fetch`, with `AbortSignal.timeout(5000)`; validates an HTTP 2xx response and the parsed JSON `status === "ok"`.
+2. VM-local MongoDB via existing `mongoose`, using `.env.local` loaded by `utils/loadEnvironment`, restricted by URL parsing to `mongodb:` on `127.0.0.1` or `localhost`; executes an admin `ping` and disconnects.
+3. PM2 via `execFile('pm2', ['jlist'])`, verifies `wtwr-vm-api` has `pm2_env.status === 'online'`.
+
+Errors for one component do not skip the remaining checks. Failed checks set `process.exitCode = 1`; all passing checks exit successfully. A deliberate test using `HEALTHCHECK_URL=http://127.0.0.1:3999` produced `Health check failed: fetch failed` and exit code `1`; the working API returned HTTP 200 and exit code `0`. Later the full script returned:
+
+```text
+[PASS] Express
+[PASS] MongoDB
+[PASS] PM2
+Result: 3/3 checks passed
+```
+
+No direct cloud database connection, credentials or Render-specific maintenance are included. The checker uses dependencies already in the backend repository; do not run it as a service in Render.
+
+![JavaScript checker simulated connection failure and exit code 1](images/ubuntu-js-healthcheck-failure-exit-2026-11-13.png)
+
+![JavaScript checker with a five-second fetch timeout and successful response](images/ubuntu-js-healthcheck-timeout-2026-11-13.png)
+
+![Git pull replaced initial Nano script; local HTTP check passed](images/ubuntu-healthcheck-git-sync-2026-11-13.png)
+
+**Systemd automation:** The user created and pushed [`systemd/wtwr-healthcheck.service`](systemd/wtwr-healthcheck.service) and [`systemd/wtwr-healthcheck.timer`](systemd/wtwr-healthcheck.timer), then installed them with `sudo install -m 644 ... /etc/systemd/system/`, ran `sudo systemctl daemon-reload`, and enabled the timer:
+
+```bash
+sudo systemctl enable --now wtwr-healthcheck.timer
+systemctl list-timers --all wtwr-healthcheck.timer
+journalctl -u wtwr-healthcheck.service -n 20 --no-pager
+```
+
+**Observed:** `wtwr-healthcheck.timer` was listed with a next run and the journal showed `[PASS] Express`, `[PASS] MongoDB`, `[PASS] PM2`, `Result: 3/3 checks passed`, followed by `Deactivated successfully`. A mistyped filename extension `.time` failed once; the user corrected it to `.timer` and installation succeeded. The oneshot service runs as `aem`, from `/home/aem/projects/se_project_express`, with `PM2_HOME=/home/aem/.pm2`. Timer uses `OnBootSec=2min` and `OnUnitActiveSec=5min`.
+
+**Operational caveat:** systemd records check results and failures; it does not automatically repair an unhealthy service, and this setup does not send an email or push notification. The `systemd` service has `After=` dependencies for ordering, not a strict requirement that MongoDB and PM2 be healthy by the time the check runs. The code's database URI is intentionally VM-local.
+
+![Timer installed and scheduled](images/ubuntu-healthcheck-systemd-timer-2026-11-13.png)
+
+![Journal with successful 3 of 3 JavaScript checks](images/ubuntu-healthcheck-journal-success-2026-11-13.png)
+
+### 15AV.1–15AV.5 — Install, diagnose, and verify localhost-only Nginx proxy (VERIFIED)
+
+**Installation:** The user installed Nginx from Ubuntu repositories using `sudo apt-get install nginx`. `nginx -v` returned `nginx/1.24.0 (Ubuntu)`; `systemctl is-active nginx` returned `active`, and the package installation created the `nginx.service` boot symlink.
+
+**Initial behavior:** The default site served `HTTP/1.1 200 OK`, `Content-Type: text/html` and the Nginx welcome page from wildcard listeners `0.0.0.0:80` and `[::]:80`. This is a preconfiguration observation, not proof of external reachability.
+
+The user wrote [`nginx/wtwr-vm-api.conf`](nginx/wtwr-vm-api.conf) in Windows VS Code, pushed it to GitHub, and pulled it into Ubuntu. It configures:
+
+```nginx
+server {
+    listen 127.0.0.1:80;
+    server_name localhost;
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 15s;
+    }
+}
+```
+
+The file was installed in `/etc/nginx/conf.d/`. The default-site symlink `/etc/nginx/sites-enabled/default` was verified and removed via `sudo unlink`. `sudo nginx -t` returned successful syntax checks.
+
+**Troubleshooting finding:** A graceful `sudo systemctl reload nginx` left the old welcome page and wildcard sockets in use. `nginx -T` showed the new config file but `ss` still showed the previous `0.0.0.0:80` and `[::]:80` listeners. `/var/log/nginx/error.log` reported repeated `bind() to 127.0.0.1:80 failed (98: Address already in use)` and `still could not bind()`. The observed failure was due to the existing wildcard listener conflicting with the new loopback listener; a restart was needed to fully release the old sockets. Do not assume an `nginx -t` success means a reload was successfully applied.
+
+After `sudo nginx -t && sudo systemctl restart nginx`, the user verified:
+
+```bash
+sudo ss -lntp | grep ':80 '
+curl -i --max-time 5 http://127.0.0.1/
+curl -sS -i --max-time 5 http://127.0.0.1/items
+```
+
+**Observed:** Nginx listened at `127.0.0.1:80` only; the local root endpoint returned `HTTP/1.1 200 OK` and `{"status":"ok"}`, and `/items` returned `HTTP/1.1 200 OK` with `[]`. This verifies the route Nginx → Express → local MongoDB read operation. It does not yet test an authenticated write or private LAN reachability. In the `ss` output, the peer column `0.0.0.0:*` is normal and **not** another listening interface.
+
+![Nginx installed and active](images/ubuntu-nginx-installed-active-2026-11-13.png)
+
+![Default Nginx wildcard listeners](images/ubuntu-nginx-default-wildcard-listeners-2026-11-13.png)
+
+![Reverse proxy config installed and default site link located](images/ubuntu-nginx-config-installed-default-link-2026-11-13.png)
+
+![Failed reload still serving Nginx welcome page](images/ubuntu-nginx-reload-stale-welcome-page-2026-11-13.png)
+
+![Config on disk did not match active sockets after reload](images/ubuntu-nginx-config-and-socket-mismatch-2026-11-13.png)
+
+![Nginx error log showing address already in use](images/ubuntu-nginx-bind-address-in-use-2026-11-13.png)
+
+![After restart, Nginx listens on localhost and proxies root response](images/ubuntu-nginx-localhost-reverse-proxy-2026-11-13.png)
+
+![Clothing-list request through Nginx returned 200 and empty array](images/ubuntu-nginx-items-http-200-2026-11-13.png)
+
+### 15AV.6–15AV.8 — Restrict the Express listener without changing Render's default (VERIFIED)
+
+The user updated shared `app.js` in VS Code so the HTTP server's host is optional:
+
+```js
+app.listen(PORT, process.env.BIND_HOST || undefined, () => {
+  console.warn(`Server listening on port ${PORT}`);
+});
+```
+
+**Separation:** In the Ubuntu VM's private Git-ignored `.env.local`, the user added `BIND_HOST=127.0.0.1`. The separate Render service has no documented `BIND_HOST` override, so the app retains Node's previous default bind behavior there. This is a configuration design distinction, not a fresh Render smoke test.
+
+After syncing, the VM ran `pm2 restart wtwr-vm-api`. `sudo ss -lntp | grep ':3001'` showed `127.0.0.1:3001` instead of the earlier `*:3001`. The user then confirmed `curl -sS http://127.0.0.1/` returned `{"status":"ok"}` and the JavaScript checker returned `3/3 checks passed`.
+
+![Express listening only on localhost](images/ubuntu-express-localhost-bind-2026-11-13.png)
+
+![Nginx root and JavaScript 3/3 checks after restricting Express](images/ubuntu-proxy-and-js-healthcheck-pass-2026-11-13.png)
+
+### 15AW — Full-stack controlled reboot, including Nginx (VERIFIED)
+
+The user restarted the Ubuntu VM using `sudo reboot`, unlocked the encrypted disk at the VirtualBox console, and logged in as `aem`. The screen reported Ubuntu Server 24.04.5 LTS and `enp0s3` IPv4 `10.0.2.15`.
+
+```bash
+systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer
+curl -sS http://127.0.0.1/
+node ~/projects/se_project_express/docs/deployment/virtualbox/scripts/healthcheck.js
+```
+
+**Actual output:** Four lines of `active`; the corrected HTTP request returned `{"status":"ok"}`; the JavaScript checker produced `[PASS] Express`, `[PASS] MongoDB`, `[PASS] PM2`, `Result: 3/3 checks passed`.
+
+A first `curl` invocation used a malformed address ending in `127.0.0.1.` rather than the slash form `127.0.0.1/`, producing `curl: (6) Could not resolve host`. That was a typing mistake; the immediate correctly formed retry succeeded. **Do not interpret the first error as evidence of a DNS/network outage.**
+
+![Full reboot: all four systemd units active, proxy and script successful](images/ubuntu-full-stack-reboot-verified-2026-11-13.png)
+
+**Assessment:** Local PM2/MongoDB/Express/Nginx startup, plus timer activation, has been tested successfully after a real reboot. The lab remains private: no new NAT forwards or UFW inbound exceptions were requested. A separate host-side isolation check, authenticated write persistence across reboot, backup restore test, and formal Sprint 15 rubric comparison remain unverified. Ubuntu's update notice reported pending security updates; apply updates in a controlled maintenance window and recheck services afterward.
+
+### Useful operational commands (copy and verify, VM only)
+
+```bash
+# Status and service health (run in VM)
+systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer
+pm2 list
+node ~/projects/se_project_express/docs/deployment/virtualbox/scripts/healthcheck.js
+
+# Check socket bindings; expected loopback-only on 80, 3001, 27017
+sudo ss -lntp | grep -E ':(80|3001|27017) '
+
+# Reverse proxy smoke tests
+curl -sS -i --max-time 5 http://127.0.0.1/
+curl -sS -i --max-time 5 http://127.0.0.1/items
+
+# Scheduled-check status and results
+systemctl list-timers --all wtwr-healthcheck.timer
+journalctl -u wtwr-healthcheck.service -n 25 --no-pager
+
+# Validate Nginx before making service changes
+sudo nginx -t
+```
+
+**Host portability:** NAT maintains a guest-internal IP independent of which household network Windows joins, assuming the same VirtualBox NAT and guest network configuration. The VM is not thereby globally portable to arbitrary host OS/hardware, and internet access is still dependent on the host's connectivity. Export, credential hygiene, and restoration should be documented and tested separately before claiming external-drive portability.

@@ -1,8 +1,8 @@
-# Screenshot manifest — updated November 12, 2026 Pacific
+# Screenshot manifest — updated November 13, 2026 Pacific
 
 These image assets are copies of screenshots from the original documentation archive or later captured screenshots available in the Sprint 15 session. The three hardware screenshots missing from the original ZIP were matched by **visually inspecting the screenshots**, not by guessing from filenames. They depict *historical* settings, not necessarily current persisted state.
 
-Screenshot files are organized by environment: `virtualbox/images/` (34 images) and `render/images/` (2 images).
+The current archive contains **56 image files**. Screenshot files are organized by environment: `virtualbox/images/` (54 images) and `render/images/` (2 images).
 
 ## Included images
 
@@ -58,7 +58,7 @@ Before publishing this draft in a public GitHub repository, visually review **ev
 - `ubuntu-mongod-enabled-2026-11-12.png`: Initially `inactive`/`disabled`; MongoDB started and became `active`; `systemctl enable mongod` created symlink. User separately confirmed `is-enabled` returned `enabled`.
 - `ubuntu-pm2-express-restored-2026-11-12.png`: `wtwr-vm-api` online as `aem`, zero restarts, fresh November 13 UTC successful MongoDB connection and Express port 3001 startup logs.
 
-The first four screenshots show configuration and application startup, not an unattended reboot. A separate successful HTTP response was subsequently verified at checkpoint 15AT.9 (see new screenshot below). Automated PM2 startup and unattended reboot remain pending.
+The first four screenshots show configuration and application startup, **not** an unattended reboot. Subsequent November 13 screenshots establish PM2 startup, Nginx proxying and a complete controlled reboot; see the final section of this manifest.
 
 ## Added following checkpoint 15AT.9 — local HTTP evidence
 
@@ -72,3 +72,33 @@ The first four screenshots show configuration and application startup, not an un
 ## Added following checkpoint 15AT.11 — Express socket address evidence
 
 - `ubuntu-express-wildcard-listener-2026-11-12.png`: `sudo ss -lntp | grep ':3001'` shows Node PID 4633 listening at `*:3001` (wildcard guest address). No credentials shown. This does not prove outside connectivity or authorization, and it does not show a new configuration change.
+
+
+## Added November 13, 2026 — PM2 persistence, monitoring, Nginx, and full reboot
+
+These user-provided terminal screenshots are captured as PNGs under `virtualbox/images/`. Sensitive credentials are not included; before publishing to a public repository, visually audit images again.
+
+| File | Verified event |
+| --- | --- |
+| `ubuntu-pm2-process-save-2026-11-13.png` | `pm2 save` persisted `wtwr-vm-api` configuration |
+| `ubuntu-pm2-startup-generated-2026-11-13.png` | PM2 generated its systemd startup command |
+| `ubuntu-pm2-startup-systemd-enabled-2026-11-13.png` | PM2 startup service installed/enabled for `aem` |
+| `ubuntu-pm2-reboot-recovery-2026-11-13.png` | MongoDB and PM2 active post-reboot; Express online and responding |
+| `ubuntu-js-healthcheck-failure-exit-2026-11-13.png` | Deliberate port-3999 failure returned exit code `1` |
+| `ubuntu-js-healthcheck-timeout-2026-11-13.png` | 5-second request timeout in JS with successful 200 response |
+| `ubuntu-healthcheck-git-sync-2026-11-13.png` | VS Code/GitHub JS script fast-forwarded to Ubuntu and checked |
+| `ubuntu-healthcheck-systemd-timer-2026-11-13.png` | systemd service/timer installed; timer schedule shown |
+| `ubuntu-healthcheck-journal-success-2026-11-13.png` | journal records 3/3 passing checker result |
+| `ubuntu-nginx-installed-active-2026-11-13.png` | Nginx 1.24.0 installed and service active |
+| `ubuntu-nginx-default-wildcard-listeners-2026-11-13.png` | Initial default Nginx page and wildcard sockets |
+| `ubuntu-nginx-config-installed-default-link-2026-11-13.png` | VM proxy config installed; legacy enabled-site symlink inspected |
+| `ubuntu-nginx-reload-stale-welcome-page-2026-11-13.png` | Initial reload left stale welcome page |
+| `ubuntu-nginx-config-and-socket-mismatch-2026-11-13.png` | Nginx loaded config text did not match active sockets |
+| `ubuntu-nginx-bind-address-in-use-2026-11-13.png` | Error log confirms bind conflict (`98: Address already in use`) |
+| `ubuntu-nginx-localhost-reverse-proxy-2026-11-13.png` | Successful Nginx restart, loopback listener, proxied root 200 |
+| `ubuntu-nginx-items-http-200-2026-11-13.png` | Proxied GET `/items` returned HTTP 200 and `[]` |
+| `ubuntu-express-localhost-bind-2026-11-13.png` | Express now binds `127.0.0.1:3001` |
+| `ubuntu-proxy-and-js-healthcheck-pass-2026-11-13.png` | Nginx root and 3/3 JS checker both successful after binding change |
+| `ubuntu-full-stack-reboot-verified-2026-11-13.png` | Four units active after reboot; corrected curl and 3/3 JS checker pass |
+
+**Provenance:** Original screenshots from conversation evidence and the prior deployment archive; newly included screenshots correspond to observed user-provided terminal output. Logs do not prove conditions they did not test (e.g., public network reachability or backup restoration). The final reboot screenshot shows a first mistyped curl URL followed by a successful corrected command; see the dated checkpoint for interpretation.

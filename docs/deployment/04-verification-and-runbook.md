@@ -1,9 +1,11 @@
-# Sprint 15 — Verification Matrix, Pending Work and Recovery Runbook
+# Sprint 15 — Verification Matrix and Recovery Runbook
 
 > **October 31 host-side correction:** The initial check found `localhostReachable="1"`. After a shutdown, the user successfully restored the saved setting to `localhostReachable="0"` and confirmed `VMState="poweroff"` and localhost-only SSH forwarding. **Post-boot SSH access and `localhostReachable="0"` persistence were subsequently verified while the VM was running.** See [05-vm-application-deployment.md](virtualbox/05-vm-application-deployment.md).
 
 
-> **Snapshot:** October 31, 2026. **Do not confuse “planned” with “verified.”**
+> **Historical baseline:** October 31, 2026, updated through November 13. Dated pending items are preserved as history; use the latest status matrix in section 9.
+
+> **Current verified result (Nov. 13, 2026 Pacific):** The private Ubuntu lab recovered all four components after a full controlled reboot: `mongod`, `pm2-aem`, `nginx`, and `wtwr-healthcheck.timer` reported `active`. Nginx at `127.0.0.1:80` returned `{"status":"ok"}` from Express, and the JavaScript checker reported **3/3 PASS** (Express, MongoDB, PM2). `GET /items` via Nginx returned 200 and `[]`. See [15AU–15AW dated checkpoint evidence](virtualbox/05-vm-application-deployment.md). Earlier "pending" lists below are dated snapshots and do **not** override this current status. This is a VM-local operational verification, not a final rubric assessment.
 
 ## 1. Completed checkpoints
 
@@ -34,7 +36,7 @@
 
 Screenshots: [network](virtualbox/images/ubuntu-nat-enp0s3-verified-2026-11-12.png), [empty PM2](virtualbox/images/ubuntu-curl-fail-pm2-empty-2026-11-12.png), [MongoDB recovery](virtualbox/images/ubuntu-mongod-enabled-2026-11-12.png), [Express recovery](virtualbox/images/ubuntu-pm2-express-restored-2026-11-12.png).
 
-## 2. Pending and risks — prioritize in this order
+## 2. Historical priorities and unresolved risks (initial list; November 13 updates in section 9)
 
 1. **Credential exposure:** Rotate the previously displayed `wtwr_render_app` Atlas password. Update secret `MONGODB_URI` in Render without revealing its value. Verify connections with the new password, and if feasible verify the old password no longer authenticates. User previously declined rotation; this remains unresolved, not silently remediated.
 2. **Record deployment evidence:** Save redacted screenshots of service configuration, successful Render logs, GitHub Pages workflow, Atlas role/scope, and database document counts. Avoid screenshots with secret fields revealed.
@@ -119,7 +121,7 @@ Attach redacted screenshots / text showing:
 
 Never add `.env.local`, API keys, database passwords, JWT secrets, private SSH keys, or unredacted password-bearing screenshots to GitHub. A screenshot of a connection string can expose an entire database credential even if other fields are hidden. Scrub output and check every image before committing a public repository.
 
-## 8. Recommended next checkpoint
+## 8. Earlier recommended checkpoints (historical)
 
 **The VM has passed post-boot NAT/SSH/UFW/DNS/Git and the database resource/default-firewall preflight (15AM).** The guest AVX, `noble`, `amd64`, curl and gpg checks passed. MongoDB's 8.0 release key was inspected, the scoped binary keyring was installed, the official Noble APT source was configured, and `apt-get update` retrieved its metadata/package indexes without error (15AO–15AR). **Completed (15AS.3):** MongoDB service started successfully, `systemctl is-active mongod` returned `active`, `ss` confirmed the loopback-only `127.0.0.1:27017` listening socket, and `mongosh` ping returned `1`. Installed MongoDB is 8.0.34. **Next:** app-level Mongoose connection succeeded against `wtwr_vm_lab` (15AS.6), and PM2 now supervises Express (15AT.2), with verified MongoDB startup and port 3001 messages. The next verification is guest-local HTTP and interface binding, followed by database authorization, boot persistence, Nginx, restore testing, and rubric review. `security.authorization` was not enabled in the inspected default configuration. Production Atlas remains separate and unchanged.
 
@@ -159,3 +161,45 @@ curl -i --max-time 5 http://127.0.0.1:3001/items
 - **Prepared only:** `scripts/vm-healthcheck.js` checks service status, socket, and both local GET routes. It has not been run in Ubuntu or scheduled at boot. No Python dependency. Do not claim its checks passed until the user provides output.
 
 **Operational separation:** `systemd` starts MongoDB on boot (verified enabled); PM2 must be configured to restore Express and manage failure/restart; JavaScript health checks report status and may later run via `systemd` on a delayed schedule. A health check alone cannot resurrect the application.
+
+
+## 9. November 13 operational verification — current guidance
+
+### Verified matrix
+
+| Area | Check performed | Observed result |
+| --- | --- | --- |
+| MongoDB startup | `systemctl is-active mongod` after reboot | `active` |
+| PM2 startup | `systemctl is-active pm2-aem`; `pm2 list` | `active`; `wtwr-vm-api` online |
+| Nginx startup | `systemctl is-active nginx` after reboot | `active` |
+| Timer persistence | `systemctl is-active wtwr-healthcheck.timer` after reboot | `active` |
+| Nginx root | `curl -sS http://127.0.0.1/` | `{"status":"ok"}` |
+| Nginx database-backed read | `curl -sS -i http://127.0.0.1/items` before final reboot | `HTTP/1.1 200 OK`, `[]` |
+| Node health check | `node docs/deployment/virtualbox/scripts/healthcheck.js` | 3/3 PASS |
+| Express bind | `ss -lntp` | `127.0.0.1:3001` |
+| Nginx bind | `ss -lntp` | `127.0.0.1:80` |
+| MongoDB bind | `ss -lntp` earlier | `127.0.0.1:27017` |
+
+### Routine check (run inside the Ubuntu VM)
+
+```bash
+systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer
+node ~/projects/se_project_express/docs/deployment/virtualbox/scripts/healthcheck.js
+curl -sS --max-time 5 http://127.0.0.1/
+systemctl list-timers --all wtwr-healthcheck.timer
+journalctl -u wtwr-healthcheck.service -n 20 --no-pager
+```
+
+The timer runs a one-shot JS check, not a repair loop. If the timer is active but a check fails, inspect its journal and the relevant service (`systemctl status mongod`, `systemctl status pm2-aem`, `systemctl status nginx`, or `pm2 logs wtwr-vm-api`). Do not unnecessarily change firewall/NAT policy or expose localhost services.
+
+**Deployment files:** [`virtualbox/scripts/healthcheck.js`](virtualbox/scripts/healthcheck.js), [`virtualbox/systemd/wtwr-healthcheck.service`](virtualbox/systemd/wtwr-healthcheck.service), [`virtualbox/systemd/wtwr-healthcheck.timer`](virtualbox/systemd/wtwr-healthcheck.timer), [`virtualbox/nginx/wtwr-vm-api.conf`](virtualbox/nginx/wtwr-vm-api.conf). Do not start these units on Render.
+
+### Remaining work before final submission (NOT VERIFIED)
+
+- Compare the actual TripleTen Sprint 15 rubric with the deployed backend/frontend and demonstration requirements. Do not infer acceptance from these operational checks alone.
+- Assess whether the assignment requires the frontend to be served from VM Nginx in addition to the public GitHub Pages deployment; only API proxying has been verified locally.
+- Test authenticated create/update/delete and data persistence with disposable VM-only records if required; the `/items` read test by itself is not a full database lifecycle test.
+- Test host/hypervisor isolation, backup restoration and recovery separately if required by the rubric; guest UFW and NAT are not proof of host-enforced isolation.
+- Apply Ubuntu updates in a scheduled maintenance window and recheck health. Cloud credential exposure/rotation remains an acknowledged separate security issue, not resolved by VM hardening.
+
+Historical observations remain in earlier sections for traceability. The late November 12 notes referring to PM2, reboot, Nginx and listener isolation as pending are now superseded by November 13 screenshots and evidence.

@@ -1,54 +1,63 @@
-# TripleTen Sprint 15 — Deployment Documentation Package
+# Sprint 15 — VirtualBox / Ubuntu Private Server
 
-**Documentation maintained through November 12, 2026 Pacific** from the supplied historical VM log and verified setup/deployment checkpoints. This is a **draft for review**, not yet committed to GitHub. The October 31 Windows inspection found a NAT localhost-reachability mismatch (`1`). The user subsequently shut the VM down and **verified that the saved setting was corrected to `0`**, with localhost-only SSH forwarding preserved. The user then restarted the VM and verified SSH connectivity, the running kernel, and the NAT restriction persisted after reboot. **Post-boot guest UFW rules, SSH service, DNS resolver and Git checkout were also verified** (checkpoint 15AL). A subsequent database pre-installation readiness check (15AM) verified UFW default-deny policy, disk and RAM headroom, and no `mongod` executable; see section 05.
+**Last verified:** November 13, 2026 (Pacific). This directory documents the **private Ubuntu VM lab**, not the public Render deployment.
 
-This guide is part of `docs/deployment/virtualbox/` in the Express repository. The companion Render guide is under `../render/`, and the shared verification runbook is at `../04-verification-and-runbook.md`.
+## Current operational status
 
+| Component | Configuration | Observed verification |
+| --- | --- | --- |
+| Ubuntu VM | Ubuntu Server 24.04.5 LTS, VirtualBox NAT (`enp0s3` = `10.0.2.15`) | Booted after move to a different household network; kernel 6.8.0-149 at final reboot |
+| SSH | Windows localhost port `2222` forwarded to VM SSH | Previously verified with ED25519 key; no public router forwarding |
+| Firewall | UFW default-deny guest policy | Previously inspected; host isolation still requires separate verification |
+| MongoDB | Community Server 8.0.34, `127.0.0.1:27017`, `wtwr_vm_lab` | Service active after reboot; database ping and app connection previously passed |
+| PM2 | Process `wtwr-vm-api` as non-root `aem`; `pm2-aem` systemd service | Active after reboot; application restored and online |
+| Express | Node 24, `BIND_HOST=127.0.0.1`, port `3001` | Root and `/items` returned HTTP 200; backend listening loopback-only |
+| Nginx | 1.24.0, `127.0.0.1:80` → `127.0.0.1:3001` | Active after reboot; proxied root and `/items` returned HTTP 200 |
+| Health monitoring | `healthcheck.js` + systemd oneshot/timer, checks API/MongoDB/PM2 | Timer active after reboot; journaled 3/3 PASS results; a manual 3/3 PASS after reboot |
 
+**Full reboot test:** `systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer` returned four lines of `active`; `curl -sS http://127.0.0.1/` returned `{"status":"ok"}`; `node .../scripts/healthcheck.js` returned 3/3 checks passed. This is a real reboot verification, not merely an enabled startup setting. See [15AW evidence](05-vm-application-deployment.md).
 
-## Latest checkpoint — 15AT.11: Express listening address (verified)
+## Read these guides
 
-On November 12 Pacific / November 13 UTC the user ran `sudo ss -lntp | grep ':3001'` and observed `LISTEN ... *:3001 ... node ... pid=4633`. **Express is bound to a wildcard guest listening address**, not restricted to `127.0.0.1`. This is not evidence of public internet reachability: the VirtualBox NAT configuration includes only the localhost SSH forward, and guest UFW default-denies unsolicited incoming connections, subject to separately verifying the current complete firewall rules. See section 05 and the new listener screenshot. **Do not add host/router forwards or open guest port 3001.** Before Nginx, decide whether to make the Express listen host configurable (lab `127.0.0.1`, cloud Render `0.0.0.0`); the source code has **not** been changed.
-
-The user requested a **JavaScript-first automated health-check workflow**. An assistant-generated standalone draft was **prepared but not adopted or executed on Ubuntu**, at [`scripts/vm-healthcheck.js`](scripts/vm-healthcheck.js). It checks MongoDB active/enabled, PM2 process online, listening socket and local `/` + `/items` HTTP responses without requiring a Python runtime or displaying secrets. It is not yet installed in the Ubuntu checkout, scheduled at boot, or verified against the live guest. Startup automation must be configured separately with `systemd` for MongoDB and PM2 startup/save for Express. **Next:** develop a replacement JavaScript checker collaboratively, decide the Express listener restriction, then configure and test PM2 boot persistence.
-
-## November 12, 2026 Pacific — reboot/network-move recovery (checkpoints 15AT.3–15AT.8)
-
-After relocating to another household network and rebooting the VM, the user verified that the VirtualBox NAT guest still had `enp0s3` address `10.0.2.15/24`. Initial local HTTP requests to port 3000 and to Express port 3001 failed with `curl: (7) Failed to connect`. `pm2 list` started a fresh user daemon but showed no applications. MongoDB was `inactive` and `disabled`. The user manually started MongoDB, verified `active`, enabled it for future boots and confirmed `enabled`. The user then restored the Express app under PM2 as `aem`, again saw `online` with zero restarts, and observed fresh logs `MongoDB connected` and `Server listening on port 3001`. **A subsequent root-endpoint HTTP test passed (`HTTP/1.1 200 OK`, `{"status":"ok"}`) at checkpoint 15AT.9. `/items`, the listener interface, PM2 save/startup and actual reboot-persistence tests remain pending.** Five new screenshots are included; see [05 — Recovery checkpoints](05-vm-application-deployment.md).
-
-**Verified since that earlier snapshot:** `/items` returned HTTP 200 and `[]`; listener inspection found `*:3001`. Next: collaboratively implement JavaScript health checks and verify PM2 boot persistence with a controlled reboot. No network ports were opened. Portability/export-to-external-SSD is a future design/documentation goal, not a completed implementation.
-
-## Reading order
-
-1. [01 — VirtualBox and historical pre-boot security baseline](01-virtual-machine.md)
+1. [01 — VirtualBox VM setup and security](01-virtual-machine.md)
 2. [02 — Ubuntu operations and backend tests](02-ubuntu-operations.md)
-3. [03 — Render, GitHub Pages and MongoDB Atlas deployment](../render/03-cloud-deployment.md)
-4. [04 — Verification, risks and recovery runbook](../04-verification-and-runbook.md)
-5. [05 — Private VM application deployment log](05-vm-application-deployment.md)
+3. [05 — Database, PM2, health monitoring, Nginx and reboot checkpoint log](05-vm-application-deployment.md)
+4. [Shared verification and recovery runbook](../04-verification-and-runbook.md)
+5. [Render deployment (separate public environment)](../render/03-cloud-deployment.md)
+6. [Screenshot manifest](../SCREENSHOT-MANIFEST.md)
 
-## Quick outcomes
+The deployment log preserves earlier incomplete stages, mistakes, commands, and troubleshooting evidence as dated history; its [November 13 continuation](05-vm-application-deployment.md) provides the current state.
 
-| Area | Result |
-|---|---|
-| Ubuntu 24.04.5 VM | Bootable, encrypted LUKS/LVM installation, SSH and firewall/DNS configuration recorded |
-| Backend tests | 286/286 passed on Windows and Ubuntu |
-| Express API | Live at https://wtwr-express-api.onrender.com/ |
-| React frontend | Live at https://aemxr.github.io/se_project_react/ |
-| Database | Atlas `wtwr_render` with scoped `wtwr_render_app` user; creation/persistence verified |
-| Current VM checkpoint | 2026-10-31: post-boot SSH/NAT/UFW/DNS/Git verified; **15AM read-only preflight verified** UFW default deny in/out, root 30G free, memory 3.4Gi available, and `mongod` not found; **15AM.1/15AN verified:** guest AVX, release `noble`, curl and gpg present; `dpkg` typo corrected, architecture `amd64`; **15AO verified:** MongoDB 8.0 public key downloaded and fingerprint inspected; **15AP verified:** ASCII key dearmored, scoped keyring installed and fingerprint verified; **15AQ verified:** official MongoDB 8.0 Noble `signed-by` APT source added and inspected; **15AR verified:** APT successfully fetched MongoDB 8.0 signed metadata and amd64 package index without errors; **15AS verified:** APT simulation selected MongoDB 8.0.34, 9 new packages, no removals; **15AS.1 installed:** MongoDB server 8.0.34 and shell 2.14.1; service inactive as intended; 15AS.2 verified `ii` package status for mongodb-org, mongodb-org-server and mongodb-mongosh, and configured loopback-only binding `127.0.0.1:27017`; 15AS.3 verified `mongod` active and localhost-only with successful ping; 15AS.4 verified `.env.local` was Git-ignored and initially lacked `MONGODB_URI`; **15AS.5 user-confirmed** guest-local `wtwr_vm_lab` URI, `600` permissions and `origin/main` Git status; Mongoose connection verified in checkpoint 15AS.6 (`Connected: wtwr_vm_lab`); MongoDB boot enablement is verified; actual reboot persistence remains untested |
-| PM2 installation | **15AT.0** discovered version `7.1.1`; **15AT.1 verified** global installation, `/usr/bin/pm2`, first daemon startup under `aem`; **15AT.2 verified:** `wtwr-vm-api` online under `aem`, Express connected to the local database and listening on port 3001. Root HTTP smoke test passed at 15AT.9; `/items` returned HTTP 200 and empty JSON array at 15AT.10; wildcard listener `*:3001` verified; PM2 boot persistence pending. |
-| Pending | Express loopback-binding policy decision, Nginx, local app recovery tests, guest MongoDB authorization/boot persistence, backup restore, credential rotation and rubric review |
+## VM-only operational files
 
-## How to keep this package current
+- [`scripts/healthcheck.js`](scripts/healthcheck.js) — project-authored checker using the existing `mongoose` dependency and Node built-ins; runs in the VM repository checkout; detects failure with a nonzero exit code. It does **not** modify services.
+- [`systemd/wtwr-healthcheck.service`](systemd/wtwr-healthcheck.service) — one-shot health-check invocation as `aem` using an **installation-specific** home directory and path.
+- [`systemd/wtwr-healthcheck.timer`](systemd/wtwr-healthcheck.timer) — schedule after boot and every five minutes following execution.
+- [`nginx/wtwr-vm-api.conf`](nginx/wtwr-vm-api.conf) — loopback-only reverse-proxy server block, installed under `/etc/nginx/conf.d/`.
+- [`images/`](images/) — user-provided evidence screenshots of actual operations.
 
-After each successful (or failed) manual Ubuntu checkpoint, record the exact command and observed result in **05**, then update the status matrix in **04**. Update this ZIP from its package root, preserving paths. The cloud deployment is functional; the private VM application phase is still pending. **No one should infer that simply creating a planned-checkpoint entry means the command was executed.** As of 15AT.2, MongoDB 8.0.34 has a verified loopback-only active listener and working local ping. The guest `.env.local` is Git-ignored, and the user has verified the new `MONGODB_URI` target (`wtwr_vm_lab`) and file mode `600` (15AS.5); authorization decision, boot persistence, and durable lab data remain pending; app-level Mongoose connectivity passed 15AS.6. PM2 7.1.1 now manages the Express app successfully, with startup logs confirming MongoDB connection and port 3001; The root HTTP test passed at 15AT.9 and `/items` returned HTTP 200 with `[]` at 15AT.10; wildcard socket `*:3001` verified; PM2 boot persistence remains pending.
+Changes were developed on Windows in VS Code, committed and pushed to GitHub, and pulled on Ubuntu using `git pull --ff-only origin main`. The application code remains shared with Render; the VM uses private `.env.local` with `BIND_HOST=127.0.0.1` and a local MongoDB URI. Do not commit `.env.local` or copy its JWT secret to another environment.
 
-## Evidence integrity notes
+## Daily checks
 
-The `images/` directory includes image assets from the user's earlier documentation ZIP plus a small set of later screenshots selected because they **do not visibly contain secrets**. Three historical image references not present in the original ZIP were matched against screenshot captures from the session; all Markdown image links now resolve inside this draft. The screenshot manifest notes provenance and limits. Before publishing publicly, inspect each image again for identifying data or credentials.
+From the Ubuntu VM:
 
-**Do not include secret values in issues, commits, or exported documentation.** The cloud database password previously appeared in a chat screenshot and has **not** been recorded in these drafts.
+```bash
+systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer
+node ~/projects/se_project_express/docs/deployment/virtualbox/scripts/healthcheck.js
+curl -sS --max-time 5 http://127.0.0.1/
+systemctl list-timers --all wtwr-healthcheck.timer
+journalctl -u wtwr-healthcheck.service -n 20 --no-pager
+```
 
-**HTTP checkpoint (15AT.10):** After recovery, `curl -i --max-time 5 http://127.0.0.1:3001/items` returned `HTTP/1.1 200 OK` with the empty JSON array `[]`. See section 05 and screenshot. The root health endpoint passed separately at 15AT.9. **Subsequently verified:** the listener was `*:3001` at 15AT.11. Nginx and PM2 boot autostart remain pending.
+No daily manual service starts are expected when boot recovery is healthy. LUKS disk unlocking is still interactive during startup.
 
-**v27 evidence addition:** `ubuntu-express-wildcard-listener-2026-11-12.png`; earlier draft `scripts/vm-healthcheck.js` (not approved, deployed, or executed; final version will be written collaboratively). Neither script execution nor PM2 auto-restoration has been verified yet.
+## Boundaries and remaining work
+
+- **Render is separate:** Public API and Atlas `wtwr_render` are **not** controlled by the VM's systemd, Nginx, or PM2 configurations.
+- **Network isolation:** Local sockets, VirtualBox NAT and guest UFW help restrict exposure. These do not alone prove the Windows host or physical LAN cannot reach the guest. No HTTP/MongoDB port forwards were configured in this lab.
+- **No guaranteed uptime:** Monitoring writes status into the journal but is not remote alerting or auto-repair. Nginx/PM2/DB all recovered in the observed controlled reboot; future failures remain possible.
+- **Submission gaps to check:** Compare actual TripleTen Sprint 15 instructions with evidence, especially whether serving built React locally from Nginx is mandatory, authenticated CRUD checks, backup/restore, and the expected deployment demonstration.
+- **Portability:** VirtualBox NAT survived a change of home Wi-Fi; external SSD export/import is an untested future requirement, not currently implemented.
+
+The temporary cleanup of nested downloaded ZIP directories is intentionally excluded from the deployment tutorial.

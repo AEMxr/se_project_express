@@ -20,13 +20,17 @@ This folder contains the deployment records for the **same WTWR Express applicat
 - [04 — Verification matrix and recovery runbook](04-verification-and-runbook.md)
 - [Screenshot manifest and evidence limitations](SCREENSHOT-MANIFEST.md)
 
-## Current verified state (November 12, 2026 Pacific)
+## Current verified state (November 13, 2026 Pacific) — full stack restart confirmed
 
-The private VM has MongoDB enabled for future boots and Express running under PM2. Local `GET /` and `GET /items` both returned HTTP 200; Express is currently listening at `*:3001`, so a localhost-only binding remains a follow-up. **PM2 automatic boot restoration, Nginx, and a controlled reboot-persistence test are not yet verified.**
+**Private Ubuntu / VirtualBox lab — VERIFIED:** After a controlled reboot and disk unlock, `systemctl is-active mongod pm2-aem nginx wtwr-healthcheck.timer` returned four `active` statuses. Nginx on `127.0.0.1:80` forwarded successfully to Express on `127.0.0.1:3001`; `curl -sS http://127.0.0.1/` returned `{"status":"ok"}`. The JavaScript checker reported Express, MongoDB and PM2 passing (**3/3**). MongoDB listens on `127.0.0.1:27017` and uses the VM-only database `wtwr_vm_lab`. The VM retained `10.0.2.15` behind VirtualBox NAT after changing household networks.
 
-The public Render API and GitHub Pages frontend were verified separately using MongoDB Atlas. The VM-specific maintenance code is **not** part of Render startup.
+**Automated operations — VERIFIED:** PM2 process list saved and PM2 startup registered via `pm2-aem.service`; MongoDB enabled at boot; Nginx service active; `wtwr-healthcheck.timer` enabled and active with a successful journaled JavaScript health-check run. The check reports results, it does **not** restart services or notify externally. The timer's exact schedule is defined in `virtualbox/systemd/wtwr-healthcheck.timer`.
 
-A draft JavaScript health-check file is present at `virtualbox/scripts/vm-healthcheck.js` solely as an unapproved reference. The user intends to write and test the final version collaboratively. Do not treat the draft as deployed or configured.
+**Public Render deployment — SEPARATE:** React frontend on GitHub Pages; Express API on Render, using the Atlas `wtwr_render` database. The VM-specific JavaScript, systemd units, and Nginx configuration are stored under `virtualbox/`; they are **not** Render startup commands. Do not reuse local VM environment secrets on Render.
+
+**Limitations:** A one-time reboot and smoke tests establish startup and route availability, not continuous uptime, backup recovery, end-to-end authenticated writes, or host-enforced internet isolation. See the [runbook](04-verification-and-runbook.md) and [VM checkpoint log](virtualbox/05-vm-application-deployment.md) for evidence and outstanding items.
+
+**Deployment-specific files included:** `virtualbox/scripts/healthcheck.js`, `virtualbox/systemd/wtwr-healthcheck.{service,timer}`, and `virtualbox/nginx/wtwr-vm-api.conf`. These are actual GitHub-tracked configurations; the prior unused assistant-drafted `vm-healthcheck.js` was removed. The private `.env.local` is intentionally excluded.
 
 ## Using this folder
 

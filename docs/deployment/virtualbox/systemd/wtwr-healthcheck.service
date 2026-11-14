@@ -1,4 +1,3 @@
-
 [Unit]
 Description=WTWR Ubuntu VM health check
 After=mongod.service pm2-aem.service
