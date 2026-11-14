@@ -8,6 +8,21 @@ The main goal of this sprint was to move the project from a hard-coded user prot
 
 ---
 
+## Live Deployment
+
+- **Frontend:** https://aemxr.github.io/se_project_react/
+- **Backend API:** https://wtwr-express-api.onrender.com/
+- **Frontend repository:** https://github.com/AEMxr/se_project_react
+- **Backend repository:** https://github.com/AEMxr/se_project_express
+
+The React frontend is hosted on GitHub Pages, the Express API
+is deployed on Render, and MongoDB Atlas hosts the cloud database.
+
+The private Ubuntu VirtualBox deployment and its verification
+evidence are documented in [docs/deployment](docs/deployment/).
+
+---
+
 ## Project Overview
 
 WTWR allows users to manage clothing items and interact with item data through a REST API.
